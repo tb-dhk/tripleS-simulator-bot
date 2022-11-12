@@ -11,6 +11,10 @@ import mysql.connector
 import random
 import json
 import datetime as dt
+import calendar
+import math
+import dateutil.relativedelta
+import statistics
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -46,7 +50,7 @@ async def on_message(message):
     if "habitmap" in message.content:
         await message.channel.send("hewwo! :3")
 
-# account commands (dm only)
+# tiny commands
 
 def checklog(userid):
     cursor = mydb.cursor(buffered=True)
@@ -61,20 +65,84 @@ def checklog(userid):
     return False
 
 def gensalt(uid, pwd):
-    alpha = "qweryuiopasdfghjklzxcvbnm"
-    count = 0
-    for x in uid:
-        try:
-            count += alpha.index(x) + 1
-        except:
-            count += ord(x) 
-    for x in pwd:
-        try:
-            count += alpha.index(x) + 1
-        except:
-            count += ord(x)
-    return hashlib.sha3_512(hex(count)[::-1].encode()).hexdigest()
+        alpha = "qweryuiopasdfghjklzxcvbnm"
+        count = 0
+        for x in uid:
+            try:
+                count += alpha.index(x) + 1
+            except:
+                count += ord(x) 
+        for x in pwd:
+            try:
+                count += alpha.index(x) + 1
+            except:
+                count += ord(x)
+        return hashlib.sha3_512(hex(count)[::-1].encode()).hexdigest()
 
+def newyear(json, habit, year):
+    nmth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    lmth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+
+    json[habit] = {
+        str(year) : []
+    }
+
+    for x in range(12):
+        json[habit][str(year)].append([])
+        if int(year) % 4 == 0:
+            for x in range(lmth[x]):
+                json[habit][str(year)][-1].append(0)
+        else:
+            for x in range(nmth[x]):
+                json[habit][str(year)][-1].append(0)
+
+    return json
+
+def lis(id):
+    cursor = mydb.cursor(buffered=True)
+    maindb = os.getenv("database")
+    cursor.execute(f"use {maindb};")
+    cursor.execute("select * from accounts;")
+    result = cursor.fetchall()
+
+    if checklog(id):
+        for row in result:
+            if row[6] == str(id):
+                if row[3] == "":
+                    return {}
+                else:
+                    return json.loads(row[3])
+
+def cday(day):
+    try:
+        day = dt.date.fromisoformat(day)
+    except:
+        match day:
+            case "tdy":
+                return dt.date.today()
+            case "yst":
+                return dt.date.today() - dt.timedelta(days=1)
+            case "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat":
+                ds = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+                wd = dt.date.today().weekday()
+
+                if dt.date.today().weekday() < 5:
+                    sat = dt.date.today() + dt.timedelta(days=5-wd)
+                elif dt.date.today().weekday() == 6:
+                    sat = dt.date.today() + dt.timedelta(days=6)
+                else:
+                    sat = dt.date.today()
+
+                return sat - dt.timedelta(days=6-ds.index(day))
+            case _:
+                if isinstance(day, dt.date):
+                    return day
+                else:
+                    return ("invalid day. the 'day' argument must either be 'tdy', 'yst', the first three letters of a day of the week or a date in ISO format (YYYY-MM-DD).")
+    else:
+        return day
+
+# account commands (dm only)
 @bot.slash_command(name = "signup", description = "sign up for habitmap")
 @commands.dm_only()
 async def signup(interaction, username: str, password: str):
@@ -263,44 +331,13 @@ async def removea(interaction, password: str):
         await interaction.response.send_message("you are not logged in. if you would like to log in, try `/login` first.", ephemeral=True)
 
 # habit commands
-def newyear(json, habit, year):
-    nmth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-    lmth = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-
-    json[habit] = {
-        str(year) : []
-    }
-
-    for x in range(12):
-        json[habit][str(year)].append([])
-        if int(year) % 4 == 0:
-            for x in range(lmth[x]):
-                json[habit][str(year)][-1].append(0)
-        else:
-            for x in range(nmth[x]):
-                json[habit][str(year)][-1].append(0)
-
-    return json
-
-def lis(id):
-    cursor = mydb.cursor(buffered=True)
-    maindb = os.getenv("database")
-    cursor.execute(f"use {maindb};")
-    cursor.execute("select * from accounts;")
-    result = cursor.fetchall()
-
-    if checklog(id):
-        for row in result:
-            if row[6] == str(id):
-                return json.loads(row[3])
-
 @bot.slash_command(name = "listh", description = "list all habits")
 async def listh(interaction):
 
     data = lis(interaction.user.id)
     
     if len(data) == 0:
-        msg = "you have no habits. please consider getting a life or using `edith` to add some new habits."
+        msg = "you have no habits. please consider getting a life or using `/edith` to add some new habits."
     else:
         msg = "you have the following habits:\n"
         for x in data:
@@ -349,40 +386,6 @@ async def edith(interaction, action: str, habit: str):
         mydb.commit() 
     else:
         await interaction.response.send_message("you are not logged in. if you would like to log in, try `/login` first.", ephemeral=True)
-
-def hbopt(id):
-    discord.AutocompleteContext.options["habit"]
-    data = lis(id)
-    return [x for x in data]
-
-def cday(day):
-    try:
-        day = dt.date.fromisoformat(day)
-    except:
-        match day:
-            case "tdy":
-                return dt.date.today()
-            case "yst":
-                return dt.date.today() - dt.timedelta(days=1)
-            case "sun" | "mon" | "tue" | "wed" | "thu" | "fri" | "sat":
-                ds = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
-                wd = dt.date.today().weekday()
-
-                if dt.date.today().weekday() < 5:
-                    sat = dt.date.today() + dt.timedelta(days=5-wd)
-                elif dt.date.today().weekday() == 6:
-                    sat = dt.date.today() + dt.timedelta(days=6)
-                else:
-                    sat = dt.date.today()
-
-                return sat - dt.timedelta(days=6-ds.index(day))
-            case _:
-                if isinstance(day, dt.date):
-                    return day
-                else:
-                    return ("invalid day. the 'day' argument must either be 'tdy', 'yst', the first three letters of a day of the week or a date in ISO format (YYYY-MM-DD).")
-    else:
-        return day
 
 @bot.slash_command(name = "trackh", description = "add a habit")
 @option("habit", description="habit", required = False, default = "")
@@ -538,6 +541,287 @@ async def steph(interaction, habit: str, number: int):
 
         cursor.execute(f"update accounts set data = '{json.dumps(data)}' where discord = '{interaction.user.id}'")
         mydb.commit()
+    else:
+        await interaction.response.send_message("you are not logged in. if you would like to log in, try `/login` first.", ephemeral=True)
+
+# map commands
+@bot.slash_command(name = "durm", description = "show a daymap / durmap.")
+async def daymap(interaction, start: str, finish: str, bydur: str):
+    cursor = mydb.cursor(buffered=True)
+    maindb = os.getenv("database")
+    cursor.execute(f"use {maindb};")
+    cursor.execute("select * from accounts;")
+    result = cursor.fetchall()
+
+    if checklog(interaction.user.id):
+        for row in result:
+            if row[6] == str(interaction.user.id):
+                data = json.loads(row[3])
+                break
+    
+        match len(str(start)):
+            case 10:
+                begin = dt.date.fromisoformat(start)
+            case 7:
+                begin = dt.date.fromisoformat(start + "-01")
+            case 4:
+                begin = dt.date.fromisoformat(start + "-01-01")
+
+        match len(str(finish)):
+            case 10:
+                end = dt.date.fromisoformat(finish)
+            case 7:
+                end = dt.date.fromisoformat(finish + "-" + str(calendar.monthrange(int(finish[0:4]), int(finish[5:7]))[1]))
+            case 4:
+                end = dt.date.fromisoformat(finish + "-12-31")
+
+        try:
+            st = cday(begin)
+        except:
+            st = cday(start)
+        
+        try:
+            end = cday(end)
+        except:
+            end = cday(finish)
+
+        max = 0
+        lis = ["yy", "mm", "dd"]
+        
+        for habit in data:
+            if len(habit) > max:
+                max = len(habit)
+            lis.append(habit)
+
+        if max < 7:
+            max = 7
+        lis.append("overall")
+        lis.append("")
+        
+        if len(lis) <= 4:
+            print("you have no habits. please add a habit and try again.")
+            exit()
+
+        strings = {}
+
+        star = st
+        ps = st
+            # start += dt.timedelta(days=1) 
+        colno = 0
+
+        if star > end:
+            print("start is later than end. please try again.")
+        while star <= end:
+            match bydur:
+                case "day":
+                    ns = star + dateutil.relativedelta.relativedelta(days=+1)
+                case "week":
+                    if star.weekday() != 6:
+                        ns = star
+                        while ns.weekday() != 6:
+                            ns += dateutil.relativedelta.relativedelta(days=+1)
+                    else:
+                        ns = star + dateutil.relativedelta.relativedelta(days=+7)
+                case "month":
+                    if star.day != 1:
+                        ns = star
+                        while ns.day != 1:
+                            ns += dateutil.relativedelta.relativedelta(days=+1)
+                    else:
+                        ns = star + dateutil.relativedelta.relativedelta(months=+1)
+                case "year":
+                    if star.day != 1 and star.month != 1:
+                        ns = star
+                        while ns.day != 1 and ns.month != 1:
+                            ns += dateutil.relativedelta.relativedelta(days=+1)
+                    else:
+                        ns = star + dateutil.relativedelta.relativedelta(years=+1)
+                case _:
+                    print("invalid bydur.")
+                    exit()
+
+            date = (star.year, star.month, star.day)
+            nums = []
+            for habit in lis:
+                try:
+                    string = strings[habit]
+                except:
+                    string = habit
+                    while len(string) < max:
+                        string = " " + string
+                    string = "" + string + " "
+
+                if habit == "overall":
+                    ended = False
+                    try:
+                        num = math.floor(statistics.mean(nums))
+                    except:
+                        await interaction.response.send_message("you have no habits. please consider getting a life or using `/edith` to add some new habits.")
+                        ended = True
+                    else:
+                        match num:
+                            case 0:
+                                string += "  "
+                            case 1:
+                                string += "░░"
+                            case 2:
+                                string += "▒▒"
+                            case 3:
+                                string += "▓▓"
+                            case 4:
+                                string += "██"
+                elif habit == "":
+                    if not ended:
+                        num = int(round(statistics.mean(nums)/4, 2)*100)
+                        if num < 10:
+                            num = "0" + str(num)
+                        elif num == 100:
+                            num = "!!"
+                        string += str(num)
+                elif habit in ["yy", "mm", "dd"]:
+                    match habit:
+                        case "yy":
+                            if ps.year != star.year or star == st or star == end:
+                                if star.year < 10:
+                                    string += "0" + str(star.year)
+                                else:
+                                    string += str(star.year)[-2:]
+                            else:
+                                string += "  "
+                        case "mm":
+                            if ps.month != star.month or star == st or star == end:
+                                if star.month < 10:
+                                    string += "0" + str(star.month)
+                                else:
+                                    string += str(star.month)
+                            else:
+                                string += "  "
+                        case "dd":
+                            if star.day == 1:
+                                string += "01"
+                            elif star.day == 5:
+                                string += "05"
+                            elif star.day == 30 and calendar.monthrange(star.year, star.month)[1] in [30, 31] and star != st and star != end:
+                                string += "  "
+                            elif star.day % 5 == 0 or star == st or star == end or star.day - ps.day != 1:
+                                if star.day < 10:
+                                    string += "0" + str(star.day)
+                                else:
+                                    string += str(star.day)
+                            else:
+                                string += "  "
+                else:
+                    snums = []
+                    sta = star
+                    while sta < ns:
+                        try:
+                            num = data[habit][str(sta.year)][sta.month-1][sta.day-1]
+                        except:
+                            newyear(data, habit, date[0])
+                            num = 0
+                        nums.append(num)
+                        snums.append(num)
+                        sta += dateutil.relativedelta.relativedelta(days=+1)
+                    
+                    num = math.floor(statistics.mean(snums))
+                    match num:
+                        case 0:
+                            string += "  "
+                        case 1:
+                            string += "░░"
+                        case 2:
+                            string += "▒▒"
+                        case 3:
+                            string += "▓▓"
+                        case 4:
+                            string += "██" 
+                strings[habit] = string
+            ps = star
+            star = ns
+            colno += 1
+
+        msg = ""
+        for x in strings:
+            msg += (strings[x] + "\n")
+        if not ended:
+            await interaction.response.send_message(f"```{msg}```")
+    else:
+        await interaction.response.send_message("you are not logged in. if you would like to log in, try `/login` first.", ephemeral=True)
+
+@bot.slash_command(name = "yearm", description = "show a yearly calendar heatmap.")
+async def yearm(interaction, year: int, habit: str):
+    cursor = mydb.cursor(buffered=True)
+    maindb = os.getenv("database")
+    cursor.execute(f"use {maindb};")
+    cursor.execute("select * from accounts;")
+    result = cursor.fetchall()
+
+    if checklog(interaction.user.id):
+        for row in result:
+            if row[6] == str(interaction.user.id):
+                data = json.loads(row[3])
+                break
+
+        stat = data[habit][str(year)]
+        yearindow = [[], [], [], [], [], [], []]
+        strings = []
+        months = [0]
+        weekcount = 0
+        def twkd(date):
+            if date.weekday() == 6:
+                return 0
+            else:
+                return date.weekday() + 1
+        for x in range(twkd(dt.date(dt.date.today().year,1,1))):
+            yearindow[x].append(0)
+        for x in range(12):
+            for y in range(len(stat[x])):
+                yearindow[twkd(dt.date(dt.date.today().year,x+1,y+1))].append(int(stat[x][y]))
+                if twkd(dt.date(dt.date.today().year,x+1,y+1)) == 6:
+                    weekcount += 1
+            months.append(weekcount)
+
+        months = months[:-1]
+        monstr = "    "
+        colno = 0
+        for x in range(len(months)):
+            while len(monstr) < months[x] * 2 + 6:
+                monstr = monstr + ("  ")
+            if x+1 < 10:
+                monstr = monstr + "0" + str(x+1)
+            else:
+                monstr = monstr + str(x+1)
+            colno += 1
+        strings.append(monstr)
+
+        colno = 0
+        for x in range(len(yearindow)):
+            days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"]
+            string = " " + days[x] + "  "
+            for y in yearindow[x]:
+                try:
+                    int(y) 
+                except:
+                    string += "  "
+                else:
+                    match y:
+                        case 0:
+                            string += "  "
+                        case 1:
+                            string += "░░"
+                        case 2:
+                            string += "▒▒"
+                        case 3:
+                            string += "▓▓"
+                        case 4:
+                            string += "██"
+            strings.append(string)
+            colno += 1
+
+        msg = ""
+        for x in strings:
+            msg += x + "\n"
+        await interaction.response.send_message(f"```{msg}```")
     else:
         await interaction.response.send_message("you are not logged in. if you would like to log in, try `/login` first.", ephemeral=True)
 
