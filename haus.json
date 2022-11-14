@@ -1,0 +1,52 @@
+{
+    "HAUS 1": {
+        "purple": {
+            "upper bunk": "",
+            "lower bunk": "",
+            "single": ""
+        },
+        "mint": {
+            "upper bunk": "",
+            "lower bunk": ""
+        }
+    },
+    "HAUS 2": {
+        "orange": {
+            "upper bunk": "",
+            "lower bunk": ""
+        },
+        "pink": {
+            "upper bunk": "",
+            "lower bunk": ""
+        },
+        "yellow": {
+            "upper bunk": "",
+            "lower bunk": "",
+            "single": ""
+        }
+    },
+    "seoul": {
+        "2-1": {
+            "upper bunk": "",
+            "lower bunk": ""
+        },
+        "2-2": {
+            "upper bunk": "",
+            "lower bunk": ""
+        },
+        "2-3": {
+            "upper bunk": "",
+            "lower bunk": ""
+        },
+        "2-4": {
+            "upper bunk": "",
+            "lower bunk": ""
+        },
+        "4": {
+            "upper bunk 1": "",
+            "lower bunk 1": "",
+            "upper bunk 2": "",
+            "lower bunk 2": ""
+        }
+    }
+}

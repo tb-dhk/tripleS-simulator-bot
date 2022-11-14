@@ -3,16 +3,14 @@
 # load discord
 import os
 import discord
-from discord.ext import commands
 from discord.commands import option
 from dotenv import load_dotenv
+from io import BytesIO
 from random import randint, choice
 import math
 import json
-import toml
+import requests
 from prettytable import PrettyTable
-from colors import color
-from plotext import tw
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -33,21 +31,31 @@ async def on_message(message):
     if message.author == bot.user:
         return
     
-    if "habitmap" in message.content:
-        await message.channel.send("hewwo! :3")
+    if "tripleS" in message.content:
+        await message.channel.send(":eyes:")
+
+story = ""
 
 # the command
 @bot.slash_command(name = "run", description = "run the simulator")
-@commands.dm_only()
-async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
-    story = ""
-
+@option("haus", required = False, default = None)
+async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str, haus: discord.Attachment):
+    global story
+   
     # members + events
     members = lineup.split(" ")
-    gravity = [g.split(" ") for g in grav.split("    ")]
-
+    gravs = [g.split(" ") for g in grav.split("    ")]
+    
     # HAUS classes + methods
-    ohaus = json.load(open("haus.json"))
+    
+    if haus != None:
+        try:
+            ohaus = requests.get(haus).json() 
+        except:
+            await interaction.response.send_message("invalid HAUS.")
+            return
+    else:
+        ohaus = json.load(open("haus.json"))
 
     uhaus = ohaus.copy()
         
@@ -83,14 +91,15 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
         return f"{prefix}{memb.serial} {memb.name}"
            
     def p(story, text):
-        story += text + "\n"
+        story = story + str(text) + "\n"
         return story 
 
     def move(house, membs, hs, move_event=""):
+        global story
         length = len(membs)
         if len(membs) > 1:
             tab = PrettyTable(["member", "room"])
-            p(story, "\nmoving time!")
+            story = p(story, "\nmoving time!")
         
         beds = []
         for h in house:
@@ -117,7 +126,7 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
                 else:
                     bed = choice(beds)
             except:
-                p(story, "oh dear! it appears we have run out of beds. time to wait for HAUS 3!")
+                story = p(story, "oh dear! it appears we have run out of beds. time to wait for HAUS 3!")
                 return house 
             else:
                 if (move_event != "" and bed.haus == move_event) or move_event == "":
@@ -144,13 +153,14 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
                         m.beds.append(m.beds[-1])
 
         if len(membs) > 1:
-            p(story, tab)
+            story = p(story, tab)
         return haus
         
     def gravity(membs, units):
+        global story
         tab = PrettyTable(units)
         ms = membs.copy()
-        p(story, "\ngrand gravity time!")
+        story = p(story, "\ngrand gravity time!")
         for x in range(math.ceil(len(membs)/len(units))):
             pair = []
             for y in range(len(units)):
@@ -167,23 +177,25 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
                     pair[y].gravity.append(units[y])
                 except:
                     pass
-        p(story, tab)
+        story = p(story, tab)
         return ms
 
     def phaus(haus, seoul=False, final=False):
+        global story
+
         if seoul:
             str = f"\nHAUS update: (seoul)"
         else:
             str = f"\nHAUS update:"
         if final:
-            p(story, str.replace("HAUS update", "final HAUS"))
+            story = p(story, str.replace("HAUS update", "final HAUS"))
         else:
-            p(story, str)
+            story = p(story, str)
         tab = PrettyTable(["room", "members"])
         for h in haus:
             if (h=="seoul") == seoul:
                 for room in haus[h]:
-                    row = [f"{h}, {croom(room)} room", ""]
+                    row = [f"{h}, {room} room", ""]
                     for bed in haus[h][room]:
                         try:
                             row[-1] += pm(haus[h][room][bed]) + ", "
@@ -191,7 +203,7 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
                             pass
                     row[-1] = row[-1][:-2]
                     tab.add_row(row)
-        p(story, tab)
+        story = p(story, tab)
 
     def full(uhaus, hs):
         full = True
@@ -214,10 +226,9 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
         
         return count
 
-    def brk():
-        return "-----" 
-
     def event(haus, omembers, number, hs, events, gravities, mmoves, tab, wave):
+        global story
+
         if number == cbeds(uhaus, hs[:-1]) + 1 and len(hs) > 1:
             events.append(["mmove"])
 
@@ -227,7 +238,7 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
                 bed = pb(omembers[-1].beds[-1])
             except:
                 bed = ""
-            tab.add_row([pm(omembers[-1]), color(omembers[-1].color, "white", omembers[-1].color), bed])
+            tab.add_row([pm(omembers[-1]), omembers[-1].color, bed])
         
         moved = False
                 
@@ -235,39 +246,41 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
             match e[0]:
                 case "mmove":
                     mmoves += 1
-                    tab.add_row([pm(omembers[-1]), color(omembers[-1].color, "white", omembers[-1].color), "TBC"])
+                    tab.add_row([pm(omembers[-1]), omembers[-1].color, "TBC"])
                     wave += 1
-                    p(story, f"new wave of {prefix}!")
-                    p(story, f"wave {str(wave)}:")
-                    p(story, tab)
+                    story = p(story, f"new wave of {prefix}!")
+                    story = p(story, f"wave {str(wave)}:")
+                    story = p(story, tab)
                     tab = PrettyTable(["member", "color", "bed"])
                     moved = True
                     haus = move(haus, omembers, hs, hs[-1])
                     phaus(haus)
-                    p(story, brk())
+                    story = p(story, "\n")
                 case "gravity":
                     gravities += 1
                     haus = move(haus, [omembers[-1]], hs)
                     if not moved:
-                        tab.add_row([pm(omembers[-1]), color(omembers[-1].color, "white", omembers[-1].color), pb(omembers[-1].beds[-1])])
+                        tab.add_row([pm(omembers[-1]), omembers[-1].color, pb(omembers[-1].beds[-1])])
                         wave += 1
-                        p(story, f"new wave of {prefix}!")
-                        p(story, f"wave {str(wave)}:")
-                        p(story, tab)
+                        story = p(story, f"new wave of {prefix}!")
+                        story = p(story, f"wave {str(wave)}:")
+                        story = p(story, tab)
                         tab = PrettyTable(["member", "color", "bed"])
                     phaus(haus)
                     omembers = gravity(omembers, e[1])
                     haus = move(haus, omembers, "seoul")
                     phaus(haus, True)
-                    p(story, brk())
+                    story = p(story, "\n")
         
         if full(ohaus, "seoul") and len(events) > 0:
-            p(story, f"the seoul HAUS is full.\n")
+            story = p(story, f"the seoul HAUS is full.\n")
 
-        return haus, gravities, mmoves, tab, wave
+        return haus, gravities, mmoves, tab, wave, 
 
     def summary(omembers):
-        p(story, "")
+        global story
+
+        story = p(story, "")
         maxg = 0
         maxm = 0
         
@@ -297,17 +310,17 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
             beds = []
             for bed in m.beds:
                 if bed != "":
-                    beds += [bed.haus, croom(bed.room), bed.bed]
+                    beds += [bed.haus, bed.room, bed.bed]
                 else:
                     beds += ["", "", ""]
             try:
                 seoul = [m.seoul.room, m.seoul.bed]
             except:
                 seoul = ["", ""]
-            row = [m.name, prefix + str(m.serial), color(m.color, "white", m.color)] + m.gravity + beds + seoul
+            row = [m.name, prefix + str(m.serial), m.color] + m.gravity + beds + seoul
             tab.add_row(row)
             
-        p(story, tab)
+        story = p(story, tab)
 
     # main code
     print()
@@ -322,7 +335,7 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
         events = []
 
         # add member to database
-        if "random":
+        if random:
             nmemb = choice(members)
         else:
             nmemb = members[0]
@@ -347,9 +360,9 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
                 hs = hauses[:y+1]
                 break
 
-        for grav in gravity:
-            if x+1 == int(grav[0]):
-                events.append(["gravity", grav[1:]])
+        for gravi in gravs:
+            if x+1 == int(gravi[0]):
+                events.append(["gravity", gravi[1:]])
         
         om = omembers.copy()
 
@@ -361,9 +374,15 @@ async def signup(story, prefix: str, lineup: str, random: bool, grav: str):
         wave = lis[4]
 
         
-    p(story, "to be continued...")
+    story = p(story, "to be continued...")
     phaus(uhaus, False, True)
     phaus(uhaus, True, True)
 
     # summary table
-    summary(omembers) 
+    summary(omembers)
+
+    as_bytes = map(str.encode, story)
+    content = b"".join(as_bytes)
+    await interaction.response.send_message("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
+
+bot.run(TOKEN)
