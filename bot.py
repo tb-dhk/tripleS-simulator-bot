@@ -37,14 +37,25 @@ async def on_message(message):
 story = ""
 
 # the command
+@bot.slash_command(name = "help", description = "help")
+async def help(interaction):
+	await interaction.response.send_message("""```
+prefix: the letter that comes before the serial number (e.g. 'S' for tripleS)
+lineup: list of members, space-separated
+random: whether the reveal of the members is random or in the specified order.
+grav: a list of gravity strings (strings that specify the number of members, then each unit separated by colons, e.g. '8:aaa:kre'). these gravity strings should be separated by spaces.
+    ```""")
+
 @bot.slash_command(name = "run", description = "run the simulator")
 @option("haus", required = False, default = None)
 async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str, haus: discord.Attachment):
     global story
+    
+    story = ""
    
     # members + events
     members = lineup.split(" ")
-    gravs = [g.split(" ") for g in grav.split("    ")]
+    gravs = [g.split(":") for g in grav.split(" ")]
     
     # HAUS classes + methods
     
@@ -167,11 +178,18 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
                 try:
                     picked = choice(membs)
                 except:
-                    pass
+                    picked = ""
                 else:
-                    pair.append(picked)
                     membs.remove(picked)
-            tab.add_row([pm(m) for m in pair])
+                finally:
+                    pair.append(picked)
+            row = []
+            for m in pair:
+                try:
+                    row.append(pm(m))
+                except:
+                    row.append("")
+            tab.add_row(row)
             for y in range(len(units)):
                 try:
                     pair[y].gravity.append(units[y])
@@ -230,7 +248,7 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
         global story
 
         if number == cbeds(uhaus, hs[:-1]) + 1 and len(hs) > 1:
-            events.append(["mmove"])
+            events = [["mmove"]] + events
 
         if len(events) == 0:
             haus = move(haus, [omembers[-1]], hs)
