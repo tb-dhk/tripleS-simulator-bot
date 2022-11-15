@@ -17,21 +17,22 @@ the following sections have been adapted from the [CLI README.md](https://github
 ## haus.json
 this optional json file represents the structure of the HAUS. with the default values (i.e. if a file is not provided), the normal HAUS and seoul HAUS can house 12 people each.
 
-structure of the haus.json file:
+example of a valid haus.json file:
 ```
 {
     "haus1" : {
         "room1" : {
-            "upper bunk" : "",
-            "lower bunk" : ""
+            "bed1" : "",
+            "bed2" : "",
+            "bed3" : ""
         }
     },
     "seoul" : {
         "4" : {
-            "upper bunk 1": "",
-            "lower bunk 1": "",
-            "upper bunk 2": "",
-            "lower bunk 2": ""
+            "bed1" : "",
+            "bed2" : "",
+            "bed3" : "",
+            "bed4" : ""
         }
     }
 }
