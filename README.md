@@ -17,6 +17,27 @@ the following sections have been adapted from the [CLI README.md](https://github
 ## haus.json
 this optional json file represents the structure of the HAUS. with the default values (i.e. if a file is not provided), the normal HAUS and seoul HAUS can house 12 people each.
 
+structure of the haus.json file:
+```
+{
+    "haus1" : {
+        "room1" : {
+            "upper bunk" : "",
+            "lower bunk" : ""
+        }
+    },
+    "seoul" : {
+        "4" : {
+            "upper bunk 1": "",
+            "lower bunk 1": "",
+            "upper bunk 2": "",
+            "lower bunk 2": ""
+        }
+    }
+}
+```
+do note that the seoul HAUS **must** be named "seoul".
+
 ### normal HAUS
 other than the seoul HAUS, each haus contains multiple rooms in the form of a dictionary, each containing a "upper bunk", "lower bunk" and optionally, a "single" bed. the default structure of the haus (based on the original tripleS) has been provided.
 
@@ -40,4 +61,9 @@ for example, based on the default HAUS:
 after your group reaches a certain number of members, a gravity (or grand gravity) will be initiated. gravity cannot be customised or controlled in any way, and every unit is assigned members at random. however, the number of members in every unit is as equal as possible.
 
 ## notes
+
+### members joining during dimension
 we have been made aware that if new members join during dimension, the members will move into the seoul HAUS with the other members first. however, we do not intend to put this in place at the moment.
+
+### second seoul HAUS
+at the moment, we do not know what the second seoul HAUS looks like but when it is revealed, we will have a revamp to the haus.json file structure.
