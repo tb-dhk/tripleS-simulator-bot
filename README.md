@@ -15,7 +15,8 @@ use /run with the following parameters:
 the following sections have been adapted from the [CLI README.md](https://github.com/shuu-wasseo/tripleS-simulator/blob/main/README.md).
 
 ## haus.json
-this optional json file represents the structure of the HAUS. with the default values, the normal HAUS and seoul HAUS can house 12 people each.
+this optional json file represents the structure of the HAUS. with the default values (i.e. if a file is not provided), the normal HAUS and seoul HAUS can house 12 people each.
+
 ### normal HAUS
 other than the seoul HAUS, each haus contains multiple rooms in the form of a dictionary, each containing a "upper bunk", "lower bunk" and optionally, a "single" bed. the default structure of the haus (based on the original tripleS) has been provided.
 
