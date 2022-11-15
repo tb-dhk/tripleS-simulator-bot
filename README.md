@@ -37,3 +37,6 @@ for example, based on the default HAUS:
 
 ### gravity
 after your group reaches a certain number of members, a gravity (or grand gravity) will be initiated. gravity cannot be customised or controlled in any way, and every unit is assigned members at random. however, the number of members in every unit is as equal as possible.
+
+## notes
+we have been made aware that if new members join during dimension, the members will move into the seoul HAUS with the other members first. however, we do not intend to put this in place at the moment.
