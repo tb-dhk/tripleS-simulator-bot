@@ -66,7 +66,7 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
    
     # members + events
     members = lineup.split(" ")
-    gravs = [g.split(":") for g in grav.split(" ")]
+    gravs = [g.split(".") for g in grav.split(" ")]
     
     # HAUS classes + methods
     
