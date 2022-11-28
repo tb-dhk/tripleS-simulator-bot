@@ -129,7 +129,6 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
            
     def p(story, text):
         story = story + str(text) + "\n"
-        print(text)
         return story 
 
     def move(house, membs, hs, move_event=""):
@@ -283,15 +282,10 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                 await msg.edit(content = f"round over!\n{lrs}")
 
                 cache_msg = discord.utils.get(bot.cached_messages, id=msg.id)
-                votes = [e.emoji for e in cache_msg.reactions]
- 
-                print(votes)
-
-                for e in Counter(votes):
-                    print(e, emoji.index(e), Counter(votes)[e])
-                    lrs += f"{e}: {Counter(votes)[e]-1}\n"
-                    
-                pick = emoji.index(Counter(votes).most_common()[0][0])
+                votes = {e.emoji: e.count for e in cache_msg.reactions}
+                
+                votes = dict(sorted(votes.items(), key=lambda item: item[1]))
+                pick = emoji.index(list(votes.keys())[-1])
                 while 1:
                     try:
                         pair = perms(pair)[int(pick)]
