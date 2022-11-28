@@ -3,29 +3,44 @@
 # load discord
 import os
 import discord
-from discord.commands import option
+from discord import app_commands
+from typing import Optional
 from dotenv import load_dotenv
 from io import BytesIO
 from random import randint, choice
 import math
 import json
+import asyncio
 import requests
 from prettytable import PrettyTable
+from collections import Counter
+import interactions
 
 intents = discord.Intents.default()
 intents.messages = True
+intents.reactions = True
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+MY_GUILD = discord.Object(id=896690066620035112)
 
-bot = discord.Bot()
+class MyClient(discord.Client):
+    def __init__(self, *, intents: discord.Intents):
+        super().__init__(intents=intents)
+        self.tree = app_commands.CommandTree(self)
+
+    async def setup_hook(self):
+        self.tree.copy_global_to(guild=MY_GUILD)
+        await self.tree.sync(guild=MY_GUILD)
+
+bot = MyClient(intents=intents)
 
 # load mysql
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online.')
-
+    
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -35,11 +50,12 @@ async def on_message(message):
         await message.channel.send(":eyes:")
 
 story = ""
+unitss = []
 
 # the command
-@bot.slash_command(name = "help", description = "help")
+@bot.tree.command(name="help", description="help")
 async def help(interaction):
-	await interaction.response.send_message("""
+	await interaction.respond("""
 __**parameters for `/run`:**__
     
 **prefix**
@@ -57,16 +73,16 @@ a list of gravity strings (strings that specify the number of members, then each
 **haus** a valid haus.json file, with a seoul HAUS in case of gravity. the default haus.json file can be found here (https://github.com/shuu-wasseo/tripleS-simulator-bot/blob/main/haus.json)
     """)
 
-@bot.slash_command(name = "run", description = "run the simulator")
-@option("haus", required = False, default = None)
-async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str, haus: discord.Attachment):
-    global story
-    
+@bot.tree.command(name="run", description="run the simulator")
+async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[discord.Attachment], random_members: Optional[bool] = False, unit: Optional[str] = "", random_grav: Optional[bool] = True):
+    global unitss
+
     story = ""
    
     # members + events
     members = lineup.split(" ")
-    gravs = [g.split(":") for g in grav.split(" ")]
+    gravs = [g.split(".") for g in grav.split(" ")]
+    unitss = [u.split(".") for u in unit.split(" ")]
     
     # HAUS classes + methods
     
@@ -114,10 +130,12 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
            
     def p(story, text):
         story = story + str(text) + "\n"
+        print(text)
         return story 
 
     def move(house, membs, hs, move_event=""):
         global story
+
         length = len(membs)
         if len(membs) > 1:
             tab = PrettyTable(["member", "room"])
@@ -148,8 +166,8 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
                 else:
                     bed = choice(beds)
             except:
-                story = p(story, "oh dear! it appears we have run out of beds. time to wait for HAUS 3!")
-                return house 
+                story = p(story, "oops! it appears we are out of beds :(")
+                return house, True
             else:
                 if (move_event != "" and bed.haus == move_event) or move_event == "":
                     if move_event != "":
@@ -176,31 +194,113 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
 
         if len(membs) > 1:
             story = p(story, tab)
-        return haus
-        
-    def gravity(membs, units):
+        return haus, False
+    
+    def perms(ls): # credits to geeksforgeeks i could not bother to do this on my own
+        if len(ls) == 0:
+            return []
+     
+        if len(ls) == 1:
+            return [ls]
+     
+        l = []
+     
+        for i in range(len(ls)):
+           m = ls[i]
+     
+           remlst = ls[:i] + ls[i+1:]
+     
+           # generating all permutations where m is first
+           # element
+           for p in perms(remlst):
+               l.append([m] + p)
+        return l
+
+    async def gravity(membs, units):
         global story
+        global unitss
+        global view
+        
+        msg = []
+        votes = []
+        emoji = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟", "🫶", "❤️", "😊", "✨", "🥹", "🎄", "🔥", "😂", "👍", "🫡", "🎁", "🎡", "🧀"]
+            
+        story = p(story, "\ngrand gravity time!")
+        if not random_grav:
+            await interaction.response.send_message("grand gravity time!")
+        tab = PrettyTable(["unit", "description"])
+        for x in units:
+            found = False
+            for y in unitss:
+                if y[0] == x:
+                    tab.add_row(y)
+                    found = True
+                    break
+            if not found:
+                tab.add_row([x, "null"])
+        story = p(story, tab)
+        if not random_grav:
+            try:
+                await interaction.followup.send(f"```{tab}```")
+            except:
+                await interaction.response.send_message(f"```{tab}```")
         tab = PrettyTable(units)
         ms = membs.copy()
-        story = p(story, "\ngrand gravity time!")
+        lrs = ""
         for x in range(math.ceil(len(membs)/len(units))):
             pair = []
             for y in range(len(units)):
                 try:
                     picked = choice(membs)
                 except:
-                    picked = ""
+                    pass
                 else:
-                    membs.remove(picked)
-                finally:
                     pair.append(picked)
-            row = []
-            for m in pair:
-                try:
-                    row.append(pm(m))
-                except:
-                    row.append("")
-            tab.add_row(row)
+                    membs.remove(picked)
+            if not random_grav:
+                stri = f"\n```{tab}```"
+                subt = PrettyTable(units)
+                lrs = ""
+
+                for n in range(len(perms(pair))):
+                    subt.add_row([pm(m) for m in perms(pair)[n]])
+                stri += (f"\nround {x+1}: ({math.factorial(len(units))*2.5} seconds)\n")
+                lines = len(str(subt).split("\n"))
+                for row in range(lines):
+                    r = str(subt).split("\n")[row]
+                    if (row >= 0 and row <= 2) or row == lines-1:
+                        stri += ("       " + f"`{r}`\n")
+                    else:
+                        stri += (emoji[row-3] + f" `{r}`\n")
+                msg = await interaction.followup.send(stri + "\npick the number of your desired permutation (react with :x: to stop voting): ")
+                for x in range(math.factorial(len(units))):
+                    try:
+                        await msg.add_reaction(emoji[x])
+                    except:
+                        pass
+
+                await asyncio.sleep(math.factorial(len(units))*2.5)
+
+                await msg.edit(content = f"round over!\n{lrs}")
+
+                cache_msg = discord.utils.get(bot.cached_messages, id=msg.id)
+                votes = [e.emoji for e in cache_msg.reactions]
+ 
+                print(votes)
+
+                for e in Counter(votes):
+                    print(e, emoji.index(e), Counter(votes)[e])
+                    lrs += f"{e}: {Counter(votes)[e]-1}\n"
+                    
+                pick = emoji.index(Counter(votes).most_common()[0][0])
+                while 1:
+                    try:
+                        pair = perms(pair)[int(pick)]
+                    except:
+                        pass
+                    else:
+                        break
+            tab.add_row([pm(m) for m in pair])
             for y in range(len(units)):
                 try:
                     pair[y].gravity.append(units[y])
@@ -255,20 +355,21 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
         
         return count
 
-    def event(haus, omembers, number, hs, events, gravities, mmoves, tab, wave):
+    async def event(haus, omembers, number, hs, events, gravities, mmoves, tab, wave):
         global story
-
+        brk = False
+        
         if number == cbeds(uhaus, hs[:-1]) + 1 and len(hs) > 1:
             events = [["mmove"]] + events
 
         if len(events) == 0:
-            haus = move(haus, [omembers[-1]], hs)
+            haus, brk = move(haus, [omembers[-1]], hs)
             try:
                 bed = pb(omembers[-1].beds[-1])
             except:
                 bed = ""
             tab.add_row([pm(omembers[-1]), omembers[-1].color, bed])
-        
+
         moved = False
                 
         for e in events: 
@@ -282,12 +383,12 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
                     story = p(story, tab)
                     tab = PrettyTable(["member", "color", "bed"])
                     moved = True
-                    haus = move(haus, omembers, hs, hs[-1])
+                    haus, brk= move(haus, omembers, hs, hs[-1])
                     phaus(haus)
                     story = p(story, "\n")
                 case "gravity":
                     gravities += 1
-                    haus = move(haus, [omembers[-1]], hs)
+                    haus, brk = move(haus, [omembers[-1]], hs)
                     if not moved:
                         tab.add_row([pm(omembers[-1]), omembers[-1].color, pb(omembers[-1].beds[-1])])
                         wave += 1
@@ -296,15 +397,15 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
                         story = p(story, tab)
                         tab = PrettyTable(["member", "color", "bed"])
                     phaus(haus)
-                    omembers = gravity(omembers, e[1])
-                    haus = move(haus, omembers, "seoul")
+                    await gravity(omembers.copy(), e[1])
+                    haus, brk = move(haus, omembers, "seoul")
                     phaus(haus, True)
                     story = p(story, "\n")
         
         if full(ohaus, "seoul") and len(events) > 0:
             story = p(story, f"the seoul HAUS is full.\n")
 
-        return haus, gravities, mmoves, tab, wave, 
+        return haus, gravities, mmoves, tab, wave, brk
 
     def summary(omembers):
         global story
@@ -364,7 +465,7 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
         events = []
 
         # add member to database
-        if random:
+        if random_members:
             nmemb = choice(members)
         else:
             nmemb = members[0]
@@ -395,12 +496,14 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
         
         om = omembers.copy()
 
-        lis = event(uhaus, om, x+1, hs, events, gravities, mmoves, tab, wave)
+        lis = await event(uhaus, om, x+1, hs, events, gravities, mmoves, tab, wave)
         uhaus = lis[0]
         gravities = lis[1]
         mmoves = lis[2]
         tab = lis[3]
         wave = lis[4]
+        if lis[5]:
+            break
 
         
     story = p(story, "to be continued...")
@@ -412,6 +515,9 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
 
     as_bytes = map(str.encode, story)
     content = b"".join(as_bytes)
-    await interaction.response.send_message("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
+    try:
+        await interaction.response.send_message("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
+    except:
+        await interaction.followup.send("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
 
 bot.run(TOKEN)
