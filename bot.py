@@ -48,8 +48,8 @@ async def on_message(message):
     if "tripleS" in message.content:
         await message.channel.send(":eyes:")
 
-unitss = []
 story = ""
+unitss = []
 
 # the command
 @bot.tree.command(name="help", description="help")
@@ -77,7 +77,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
     global unitss
     global story
 
-    if "to be continued..." in story:
+    if story[-18:] == "to be continued...":
         story = ""
 
     # members + events
