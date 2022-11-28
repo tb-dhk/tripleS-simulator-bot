@@ -75,7 +75,7 @@ async def signup(ctx, prefix: str, lineup: str, random: bool, grav: str, haus: d
     for x in gravs:
         if len(x) < 3:
             badgrav = True
-            ctx.respond("invalid gravity string.")
+            await ctx.respond("invalid gravity string.")
             break
 
     # HAUS classes + methods
