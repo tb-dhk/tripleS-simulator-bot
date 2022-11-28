@@ -69,7 +69,9 @@ async def signup(ctx, prefix: str, lineup: str, random: bool, grav: str, haus: d
     # members + events
     members = lineup.split(" ")
     gravs = [g.split(".") for g in grav.split(" ")]
-   	
+    
+    # verification
+    
     
     # HAUS classes + methods
     
@@ -358,8 +360,6 @@ async def signup(ctx, prefix: str, lineup: str, random: bool, grav: str, haus: d
         story = p(story, tab)
 
     # main code
-    print()
-
     omembers = []
     gravities = 0
     mmoves = 1
