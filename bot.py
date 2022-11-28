@@ -48,8 +48,8 @@ async def on_message(message):
     if "tripleS" in message.content:
         await message.channel.send(":eyes:")
 
-story = ""
 unitss = []
+story = ""
 
 # the command
 @bot.tree.command(name="help", description="help")
@@ -75,6 +75,10 @@ a list of gravity strings (strings that specify the number of members, then each
 @bot.tree.command(name="run", description="run the simulator")
 async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[discord.Attachment], random_members: Optional[bool] = False, unit: Optional[str] = "", random_grav: Optional[bool] = True):
     global unitss
+    global story
+
+    if "to be continued..." in story:
+        story = ""
 
     # members + events
     members = lineup.split(" ")
@@ -361,9 +365,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
             except:
                 bed = ""
             tab.add_row([pm(omembers[-1]), omembers[-1].color, bed])
-        else:
-            print(story)
-
+        
         moved = False
                 
         for e in events: 
