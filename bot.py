@@ -11,6 +11,7 @@ import math
 import json
 import requests
 from prettytable import PrettyTable
+import asyncio
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -38,8 +39,8 @@ story = ""
 
 # the command
 @bot.slash_command(name = "help", description = "help")
-async def help(interaction):
-	await interaction.response.send_message("""
+async def help(ctx):
+	await ctx.respond("""
 __**parameters for `/run`:**__
     
 **prefix**
@@ -59,14 +60,17 @@ a list of gravity strings (strings that specify the number of members, then each
 
 @bot.slash_command(name = "run", description = "run the simulator")
 @option("haus", required = False, default = None)
-async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str, haus: discord.Attachment):
+async def signup(ctx, prefix: str, lineup: str, random: bool, grav: str, haus: discord.Attachment):
     global story
+    
+    await ctx.defer()
     
     story = ""
    
     # members + events
     members = lineup.split(" ")
     gravs = [g.split(".") for g in grav.split(" ")]
+   	
     
     # HAUS classes + methods
     
@@ -74,7 +78,7 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
         try:
             ohaus = requests.get(haus).json() 
         except:
-            await interaction.response.send_message("invalid HAUS.")
+            await ctx.respond("invalid HAUS.")
             return
     else:
         ohaus = json.load(open("haus.json"))
@@ -412,6 +416,6 @@ async def signup(interaction, prefix: str, lineup: str, random: bool, grav: str,
 
     as_bytes = map(str.encode, story)
     content = b"".join(as_bytes)
-    await interaction.response.send_message("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
+    await ctx.respond("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
 
 bot.run(TOKEN)
