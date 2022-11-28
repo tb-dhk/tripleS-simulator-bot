@@ -11,7 +11,6 @@ import math
 import json
 import requests
 from prettytable import PrettyTable
-import asyncio
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -180,7 +179,10 @@ async def signup(ctx, prefix: str, lineup: str, random: bool, grav: str, haus: d
 
         if len(membs) > 1:
             story = p(story, tab)
-        return haus
+        try:
+            return haus
+        except:
+            return hs
         
     def gravity(membs, units):
         global story
