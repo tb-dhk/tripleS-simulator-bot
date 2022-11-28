@@ -83,8 +83,15 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
     gravs = [g.split(".") for g in grav.split(" ")]
     unitss = [u.split(".") for u in unit.split(" ")]
     
+    # verification
+    badgrav = False
+    for x in gravs:
+        if len(x) < 3:
+            badgrav = True
+            await ctx.respond("invalid gravity string.")
+            break
+
     # HAUS classes + methods
-    
     if haus != None:
         try:
             ohaus = requests.get(haus).json() 
@@ -448,63 +455,62 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
     # main code
     print()
 
-    omembers = []
-    gravities = 0
-    mmoves = 1
-    wave = 0
-    tab = PrettyTable(["member", "color", "bed"])
+    if not badgrav:
+        omembers = []
+        gravities = 0
+        mmoves = 1
+        wave = 0
+        tab = PrettyTable(["member", "color", "bed"])
 
-    for x in range(len(members)):
-        events = []
+        for x in range(len(members)):
+            events = []
 
-        # add member to database
-        if random_members:
-            nmemb = choice(members)
-        else:
-            nmemb = members[0]
-        new = memb(x+1, nmemb, [], [], "", "")
-        omembers.append(new)
-        members.remove(nmemb)
+            # add member to database
+            if random:
+                nmemb = choice(members)
+            else:
+                nmemb = members[0]
+            new = memb(x+1, nmemb, [], [], "", "")
+            omembers.append(new)
+            members.remove(nmemb)
 
-        # reveal new member
-        def genhex():
-            n = hex(randint(0,255))[2:]
-            if len(n) == 1:
-                return "0" + n
-            return n
-        hexc = "#" + genhex() + genhex() + genhex()
-        omembers[-1].color = hexc
-                
-        # moving
-        hauses = list(dict.keys(ohaus))
-        hauses.remove("seoul")
-        for y in range(len(hauses)):
-            if x+1 <= cbeds(uhaus, hauses[:y+1]):
-                hs = hauses[:y+1]
-                break
+            # reveal new member
+            def genhex():
+                n = hex(randint(0,255))[2:]
+                if len(n) == 1:
+                    return "0" + n
+                return n
+            hexc = "#" + genhex() + genhex() + genhex()
+            omembers[-1].color = hexc
+                    
+            # moving
+            hauses = list(dict.keys(ohaus))
+            hauses.remove("seoul")
+            for y in range(len(hauses)):
+                if x+1 <= cbeds(uhaus, hauses[:y+1]):
+                    hs = hauses[:y+1]
+                    break
 
-        for gravi in gravs:
-            if x+1 == int(gravi[0]):
-                events.append(["gravity", gravi[1:]])
-        
-        om = omembers.copy()
+            for gravi in gravs:
+                if x+1 == int(gravi[0]):
+                    events.append(["gravity", gravi[1:]])
+            
+            om = omembers.copy()
 
-        lis = await event(uhaus, om, x+1, hs, events, gravities, mmoves, tab, wave)
-        uhaus = lis[0]
-        gravities = lis[1]
-        mmoves = lis[2]
-        tab = lis[3]
-        wave = lis[4]
-        if lis[5]:
-            break
+            lis = event(uhaus, om, x+1, hs, events, gravities, mmoves, tab, wave)
+            uhaus = lis[0]
+            gravities = lis[1]
+            mmoves = lis[2]
+            tab = lis[3]
+            wave = lis[4]
 
-        
-    story = p(story, "to be continued...")
-    phaus(uhaus, False, True)
-    phaus(uhaus, True, True)
+            
+        story = p(story, "to be continued...")
+        phaus(uhaus, False, True)
+        phaus(uhaus, True, True)
 
-    # summary table
-    summary(omembers)
+        # summary table
+        summary(omembers)
 
     as_bytes = map(str.encode, story)
     content = b"".join(as_bytes)

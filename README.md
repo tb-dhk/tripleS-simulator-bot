@@ -1,7 +1,9 @@
 # tripleS-simulator-bot
 
 ## installation 
-add to your server [here](https://discord.com/api/oauth2/authorize?client_id=1041703388057960479&permissions=2048&scope=bot%20applications.commands).
+links:
+- [discord link](https://discord.com/api/oauth2/authorize?client_id=1041703388057960479&permissions=2048&scope=bot%20applications.commands)
+- [top.gg](https://top.gg/bot/1041703388057960479)
 
 ## how to use
 use /run with the following parameters:
