@@ -14,7 +14,6 @@ import asyncio
 import requests
 from prettytable import PrettyTable
 from collections import Counter
-import interactions
 
 intents = discord.Intents.default()
 intents.messages = True
