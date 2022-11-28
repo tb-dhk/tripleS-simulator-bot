@@ -76,8 +76,6 @@ a list of gravity strings (strings that specify the number of members, then each
 async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[discord.Attachment], random_members: Optional[bool] = False, unit: Optional[str] = "", random_grav: Optional[bool] = True):
     global unitss
 
-    story = ""
-   
     # members + events
     members = lineup.split(" ")
     gravs = [g.split(".") for g in grav.split(" ")]
@@ -127,7 +125,8 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
     def pm(memb):
         return f"{prefix}{memb.serial} {memb.name}"
            
-    def p(story, text):
+    def p(text):
+        global story
         story = story + str(text) + "\n"
         return story 
 
@@ -137,7 +136,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         length = len(membs)
         if len(membs) > 1:
             tab = PrettyTable(["member", "room"])
-            story = p(story, "\nmoving time!")
+            p("\nmoving time!")
         
         beds = []
         for h in house:
@@ -164,7 +163,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                 else:
                     bed = choice(beds)
             except:
-                story = p(story, "oops! it appears we are out of beds :(")
+                p("oops! it appears we are out of beds :(")
                 return house, True
             else:
                 if (move_event != "" and bed.haus == move_event) or move_event == "":
@@ -191,7 +190,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                         m.beds.append(m.beds[-1])
 
         if len(membs) > 1:
-            story = p(story, tab)
+            p(tab)
         return haus, False
     
     def perms(ls): # credits to geeksforgeeks i could not bother to do this on my own
@@ -223,7 +222,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         votes = []
         emoji = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟", "🫶", "❤️", "😊", "✨", "🥹", "🎄", "🔥", "😂", "👍", "🫡", "🎁", "🎡", "🧀"]
             
-        story = p(story, "\ngrand gravity time!")
+        p("\ngrand gravity time!")
         if not random_grav:
             await interaction.response.send_message("grand gravity time!")
         tab = PrettyTable(["unit", "description"])
@@ -236,7 +235,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                     break
             if not found:
                 tab.add_row([x, "null"])
-        story = p(story, tab)
+        p(tab)
         if not random_grav:
             try:
                 await interaction.followup.send(f"```{tab}```")
@@ -299,7 +298,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                     pair[y].gravity.append(units[y])
                 except:
                     pass
-        story = p(story, tab)
+        p(tab)
         return ms
 
     def phaus(haus, seoul=False, final=False):
@@ -310,9 +309,9 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         else:
             str = f"\nHAUS update:"
         if final:
-            story = p(story, str.replace("HAUS update", "final HAUS"))
+            p(str.replace("HAUS update", "final HAUS"))
         else:
-            story = p(story, str)
+            p(str)
         tab = PrettyTable(["room", "members"])
         for h in haus:
             if (h=="seoul") == seoul:
@@ -325,7 +324,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                             pass
                     row[-1] = row[-1][:-2]
                     tab.add_row(row)
-        story = p(story, tab)
+        p(tab)
 
     def full(uhaus, hs):
         full = True
@@ -362,6 +361,8 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
             except:
                 bed = ""
             tab.add_row([pm(omembers[-1]), omembers[-1].color, bed])
+        else:
+            print(story)
 
         moved = False
                 
@@ -371,39 +372,39 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                     mmoves += 1
                     tab.add_row([pm(omembers[-1]), omembers[-1].color, "TBC"])
                     wave += 1
-                    story = p(story, f"new wave of {prefix}!")
-                    story = p(story, f"wave {str(wave)}:")
-                    story = p(story, tab)
+                    p(f"new wave of {prefix}!")
+                    p(f"wave {str(wave)}:")
+                    p(tab)
                     tab = PrettyTable(["member", "color", "bed"])
                     moved = True
                     haus, brk= move(haus, omembers, hs, hs[-1])
                     phaus(haus)
-                    story = p(story, "\n")
+                    p("\n")
                 case "gravity":
                     gravities += 1
                     haus, brk = move(haus, [omembers[-1]], hs)
                     if not moved:
                         tab.add_row([pm(omembers[-1]), omembers[-1].color, pb(omembers[-1].beds[-1])])
                         wave += 1
-                        story = p(story, f"new wave of {prefix}!")
-                        story = p(story, f"wave {str(wave)}:")
-                        story = p(story, tab)
+                        p(f"new wave of {prefix}!")
+                        p(f"wave {str(wave)}:")
+                        p(tab)
                         tab = PrettyTable(["member", "color", "bed"])
                     phaus(haus)
                     await gravity(omembers.copy(), e[1])
                     haus, brk = move(haus, omembers, "seoul")
                     phaus(haus, True)
-                    story = p(story, "\n")
+                    p("\n")
         
         if full(ohaus, "seoul") and len(events) > 0:
-            story = p(story, f"the seoul HAUS is full.\n")
+            p(f"the seoul HAUS is full.\n")
 
         return haus, gravities, mmoves, tab, wave, brk
 
     def summary(omembers):
         global story
 
-        story = p(story, "")
+        p("")
         maxg = 0
         maxm = 0
         
@@ -443,7 +444,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
             row = [m.name, prefix + str(m.serial), m.color] + m.gravity + beds + seoul
             tab.add_row(row)
             
-        story = p(story, tab)
+        p(tab)
 
     # main code
     print()
@@ -499,7 +500,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
             break
 
         
-    story = p(story, "to be continued...")
+    p("to be continued...")
     phaus(uhaus, False, True)
     phaus(uhaus, True, True)
 
