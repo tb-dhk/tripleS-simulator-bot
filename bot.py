@@ -82,9 +82,9 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
 
     # members + events
     members = lineup.split(" ")
-    gravs = [g.split(".") for g in grav.split(" ")]
-    unitss = [u.split(".") for u in unit.split(" ")]
-    
+    gravs = [g.split(".") for g in grav.split("..")]
+    unitss = [u.split(".") for u in unit.split("..")]
+        
     # HAUS classes + methods
     
     if haus != None:
@@ -228,7 +228,11 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
             
         p("\ngrand gravity time!")
         if not random_grav:
-            await interaction.response.send_message("grand gravity time!")
+            try:
+                await interaction.response.send_message("grand gravity time!")
+                gm = await interaction.original_response()
+            except:
+                gm = await interaction.followup.send("grand gravity time!")
         tab = PrettyTable(["unit", "description"])
         for x in units:
             found = False
@@ -241,13 +245,10 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                 tab.add_row([x, "null"])
         p(tab)
         if not random_grav:
-            try:
-                await interaction.followup.send(f"```{tab}```")
-            except:
-                await interaction.response.send_message(f"```{tab}```")
+            cont = gm.content + f"\n```{tab}```"
+            await gm.edit(content = cont)
         tab = PrettyTable(units)
         ms = membs.copy()
-        lrs = ""
         for x in range(math.ceil(len(membs)/len(units))):
             pair = []
             for y in range(len(units)):
@@ -259,13 +260,10 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                     pair.append(picked)
                     membs.remove(picked)
             if not random_grav:
-                stri = f"\n```{tab}```"
                 subt = PrettyTable(units)
-                lrs = ""
-
                 for n in range(len(perms(pair))):
                     subt.add_row([pm(m) for m in perms(pair)[n]])
-                stri += (f"\nround {x+1}: ({math.factorial(len(units))*2.5} seconds)\n")
+                stri = (f"\nround {x+1}: ({math.factorial(len(units))*2.5} seconds)\n")
                 lines = len(str(subt).split("\n"))
                 for row in range(lines):
                     r = str(subt).split("\n")[row]
@@ -281,14 +279,15 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                         pass
 
                 await asyncio.sleep(math.factorial(len(units))*2.5)
-
-                await msg.edit(content = f"round over!\n{lrs}")
-
+                
                 cache_msg = discord.utils.get(bot.cached_messages, id=msg.id)
                 votes = {e.emoji: e.count for e in cache_msg.reactions}
                 
                 votes = dict(sorted(votes.items(), key=lambda item: item[1]))
                 pick = emoji.index(list(votes.keys())[-1])
+                await msg.delete()
+                tab.add_row([pm(m) for m in pair])
+                await gm.edit(content = cont + f"```{tab}```")
                 while 1:
                     try:
                         pair = perms(pair)[int(pick)]
@@ -296,7 +295,8 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                         pass
                     else:
                         break
-            tab.add_row([pm(m) for m in pair])
+            else:
+                tab.add_row([pm(m) for m in pair])
             for y in range(len(units)):
                 try:
                     pair[y].gravity.append(units[y])
