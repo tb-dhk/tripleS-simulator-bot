@@ -273,7 +273,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                         stri += ("       " + f"`{r}`\n")
                     else:
                         stri += (emoji[row-3] + f" `{r}`\n")
-                msg = await interaction.followup.send(stri + "\npick the number of your desired permutation (react with :x: to stop voting): ")
+                msg = await interaction.followup.send(stri + "\npick the number of your desired permutation: ")
                 for x in range(math.factorial(len(units))):
                     try:
                         await msg.add_reaction(emoji[x])
