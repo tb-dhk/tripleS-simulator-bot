@@ -13,7 +13,7 @@ import json
 import asyncio
 import requests
 from prettytable import PrettyTable
-from collections import Counter
+import requests
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -35,11 +35,13 @@ class MyClient(discord.Client):
 
 bot = MyClient(intents=intents)
 
+topg = os.getenv('TOPGG_TOKEN')
+
 # load mysql
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online.')
-    
+        
 @bot.event
 async def on_message(message):
     if message.author == bot.user:
@@ -54,7 +56,9 @@ unitss = []
 # the command
 @bot.tree.command(name="help", description="help")
 async def help(interaction):
-	await interaction.respond("""
+    print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+
+    await interaction.respond("""
 __**parameters for `/run`:**__
     
 **prefix**
@@ -74,8 +78,11 @@ a list of gravity strings (strings that specify the number of members, then each
 
 @bot.tree.command(name="run", description="run the simulator")
 async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[discord.Attachment], random_members: Optional[bool] = False, unit: Optional[str] = "", random_grav: Optional[bool] = True):
+    print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+
     global unitss
     global story
+    global topg
 
     if story[-18:] == "to be continued...":
         story = ""
@@ -84,6 +91,11 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
     members = lineup.split(" ")
     gravs = [g.split(".") for g in grav.split("..")]
     unitss = [u.split(".") for u in unit.split("..")]
+
+    for x in gravs:
+        if len(x) < 3:
+            await interaction.response.send_message("invalid gravity string.")
+            return
         
     # HAUS classes + methods
     
@@ -449,71 +461,75 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         p(tab)
 
     # main code
-    print()
+    voted = requests.get(f"https://top.gg/api/bots/1041703388057960479/check?userId={interaction.user.id}", headers={"Authorization": topg}).json()["voted"]
+    owners = requests.get(f"https://top.gg/api/bots/1041703388057960479/", headers={"Authorization": topg}).json()["owners"] 
+    cowner = str(interaction.user.id) in owners
+    if not (voted or cowner) and not random_grav:
+        await interaction.response.send_message("to use voted/manual gravity, please vote at https://top.gg/bot/1041703388057960479/vote/.")
+    else:
+        omembers = []
+        gravities = 0
+        mmoves = 1
+        wave = 0
+        tab = PrettyTable(["member", "color", "bed"])
 
-    omembers = []
-    gravities = 0
-    mmoves = 1
-    wave = 0
-    tab = PrettyTable(["member", "color", "bed"])
+        for x in range(len(members)):
+            events = []
 
-    for x in range(len(members)):
-        events = []
+            # add member to database
+            if random_members:
+                nmemb = choice(members)
+            else:
+                nmemb = members[0]
+            new = memb(x+1, nmemb, [], [], "", "")
+            omembers.append(new)
+            members.remove(nmemb)
 
-        # add member to database
-        if random_members:
-            nmemb = choice(members)
-        else:
-            nmemb = members[0]
-        new = memb(x+1, nmemb, [], [], "", "")
-        omembers.append(new)
-        members.remove(nmemb)
+            # reveal new member
+            def genhex():
+                n = hex(randint(0,255))[2:]
+                if len(n) == 1:
+                    return "0" + n
+                return n
+            hexc = "#" + genhex() + genhex() + genhex()
+            omembers[-1].color = hexc
+                    
+            # moving
+            hauses = list(dict.keys(ohaus))
+            hauses.remove("seoul")
+            for y in range(len(hauses)):
+                if x+1 <= cbeds(uhaus, hauses[:y+1]):
+                    hs = hauses[:y+1]
+                    break
 
-        # reveal new member
-        def genhex():
-            n = hex(randint(0,255))[2:]
-            if len(n) == 1:
-                return "0" + n
-            return n
-        hexc = "#" + genhex() + genhex() + genhex()
-        omembers[-1].color = hexc
-                
-        # moving
-        hauses = list(dict.keys(ohaus))
-        hauses.remove("seoul")
-        for y in range(len(hauses)):
-            if x+1 <= cbeds(uhaus, hauses[:y+1]):
-                hs = hauses[:y+1]
+            for gravi in gravs:
+                if x+1 == int(gravi[0]):
+                    events.append(["gravity", gravi[1:]])
+            
+            om = omembers.copy()
+
+            lis = await event(uhaus, om, x+1, hs, events, gravities, mmoves, tab, wave)
+            uhaus = lis[0]
+            gravities = lis[1]
+            mmoves = lis[2]
+            tab = lis[3]
+            wave = lis[4]
+            if lis[5]:
                 break
 
-        for gravi in gravs:
-            if x+1 == int(gravi[0]):
-                events.append(["gravity", gravi[1:]])
-        
-        om = omembers.copy()
+            
+        p("to be continued...")
+        phaus(uhaus, False, True)
+        phaus(uhaus, True, True)
 
-        lis = await event(uhaus, om, x+1, hs, events, gravities, mmoves, tab, wave)
-        uhaus = lis[0]
-        gravities = lis[1]
-        mmoves = lis[2]
-        tab = lis[3]
-        wave = lis[4]
-        if lis[5]:
-            break
+        # summary table
+        summary(omembers)
 
-        
-    p("to be continued...")
-    phaus(uhaus, False, True)
-    phaus(uhaus, True, True)
-
-    # summary table
-    summary(omembers)
-
-    as_bytes = map(str.encode, story)
-    content = b"".join(as_bytes)
-    try:
-        await interaction.response.send_message("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
-    except:
-        await interaction.followup.send("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
+        as_bytes = map(str.encode, story)
+        content = b"".join(as_bytes)
+        try:
+            await interaction.response.send_message("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
+        except:
+            await interaction.followup.send("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
 
 bot.run(TOKEN)
