@@ -69,13 +69,21 @@ the letter that comes before the serial number (e.g. 'S' for tripleS)
 **lineup**
 list of members, space-separated
 
-**random**
-whether the reveal of the members is random or in the specified order.
-
 **grav**
-a list of gravity strings (strings that specify the number of members, then each unit separated by colons, e.g. '8:aaa:kre'). these gravity strings should be separated by spaces.
+a list of gravity strings (strings that specify the number of members, then each unit separated by periods, e.g. '8.aaa.kre'). these gravity strings should be separated by two periods.
 
 **haus** a valid haus.json file, with a seoul HAUS in case of gravity. the default haus.json file can be found here (https://github.com/shuu-wasseo/tripleS-simulator-bot/blob/main/haus.json)
+
+***[OPTIONAL]***
+
+**random_members** (defaults to False)
+whether the reveal of the members is random or in the specified order.
+
+**unit** (defaults to "")
+units and their descriptions, in the same format as gravity strings
+
+**random_grav** (defaults to False)
+whether gravity is random or chosen by the user(s) through voting (with emojis)
     """)
 
 @bot.tree.command(name="run", description="run the simulator")
