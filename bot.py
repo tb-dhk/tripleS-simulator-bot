@@ -41,6 +41,8 @@ topg = os.getenv('TOPGG_TOKEN')
 @bot.event
 async def on_ready():
     print(f'{bot.user} is online.')
+    for x in bot.guilds:
+        print(x.name)
         
 @bot.event
 async def on_message(message):
@@ -58,7 +60,7 @@ unitss = []
 async def help(interaction):
     print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
 
-    await interaction.respond("""
+    await interaction.response.send_message("""
 __**parameters for `/run`:**__
     
 **prefix**
@@ -461,6 +463,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         p(tab)
 
     # main code
+    print(requests.get(f"https://top.gg/api/bots/1041703388057960479/check?userId={interaction.user.id}", headers={"Authorization": topg}).json())
     voted = requests.get(f"https://top.gg/api/bots/1041703388057960479/check?userId={interaction.user.id}", headers={"Authorization": topg}).json()["voted"]
     owners = requests.get(f"https://top.gg/api/bots/1041703388057960479/", headers={"Authorization": topg}).json()["owners"] 
     cowner = str(interaction.user.id) in owners
