@@ -83,7 +83,8 @@ whether the reveal of the members is random or in the specified order.
 units and their descriptions, in the same format as gravity strings
 
 **random_grav** (defaults to False)
-whether gravity is random or chosen by the user(s) through voting (with emojis)
+whether gravity is random or chosen by the user(s) through voting (with emojis). requires voting for the bot on top.gg to enable.
+https://top.gg/bot/1041703388057960479/vote
 
 sample command:
 ```/run prefix: S lineup: ysy jhr ljw kcy kyy ksm knk gyb ked grav: 8.aaa.kre unit: aaa.acidangelfromasia..kre.krystaleyes random_grav: false```
