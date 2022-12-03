@@ -84,6 +84,9 @@ units and their descriptions, in the same format as gravity strings
 
 **random_grav** (defaults to False)
 whether gravity is random or chosen by the user(s) through voting (with emojis)
+
+sample command:
+```/run prefix: S lineup: ysy jhr ljw kcy kyy ksm knk gyb ked grav: 8.aaa.kre unit: aaa.acidangelfromasia..kre.krystaleyes random_grav: false```
     """)
 
 @bot.tree.command(name="run", description="run the simulator")
