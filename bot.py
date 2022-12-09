@@ -22,7 +22,6 @@ intents.reactions = True
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-MY_GUILD = discord.Object(id=896690066620035112)
 
 class MyClient(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -30,27 +29,15 @@ class MyClient(discord.Client):
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
-        self.tree.copy_global_to(guild=MY_GUILD)
-        await self.tree.sync(guild=MY_GUILD)
+        for guild in self.guilds:
+            self.tree.clear_commands(guild=guild)
+        self.tree.add_command(self.tree.get_command("help"), override=True)
+        self.tree.add_command(self.tree.get_command("run"), override=True)
+        await self.tree.sync()
 
 bot = MyClient(intents=intents)
 
 topg = os.getenv('TOPGG_TOKEN')
-
-# load mysql
-@bot.event
-async def on_ready():
-    print(f'{bot.user} is online.')
-    for x in bot.guilds:
-        print(x.name)
-        
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
-    
-    if "tripleS" in message.content:
-        await message.channel.send(":eyes:")
 
 story = ""
 unitss = []
@@ -58,7 +45,7 @@ unitss = []
 # the command
 @bot.tree.command(name="help", description="help")
 async def help(interaction):
-    print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    print(f"/help was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
 
     await interaction.response.send_message("""
 __**parameters for `/run`:**__
@@ -92,6 +79,7 @@ sample command:
 
 @bot.tree.command(name="run", description="run the simulator")
 async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[discord.Attachment], random_members: Optional[bool] = False, unit: Optional[str] = "", random_grav: Optional[bool] = True):
+    await interaction.response.defer()
     print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
 
     global unitss
@@ -108,7 +96,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
 
     for x in gravs:
         if len(x) < 3:
-            await interaction.response.send_message("invalid gravity string.")
+            await interaction.followup.send("invalid gravity string.")
             return
         
     # HAUS classes + methods
@@ -117,7 +105,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         try:
             ohaus = requests.get(haus).json() 
         except:
-            await interaction.response.send_message("invalid HAUS.")
+            await interaction.followup.send("invalid HAUS.")
             return
     else:
         ohaus = json.load(open("haus.json"))
@@ -475,8 +463,8 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         p(tab)
 
     # main code
-    print(requests.get(f"https://top.gg/api/bots/1041703388057960479/check?userId={interaction.user.id}", headers={"Authorization": topg}).json())
     voted = requests.get(f"https://top.gg/api/bots/1041703388057960479/check?userId={interaction.user.id}", headers={"Authorization": topg}).json()["voted"]
+    print(voted)
     owners = requests.get(f"https://top.gg/api/bots/1041703388057960479/", headers={"Authorization": topg}).json()["owners"] 
     cowner = str(interaction.user.id) in owners
     if not (voted or cowner) and not random_grav:
@@ -547,4 +535,14 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         except:
             await interaction.followup.send("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
 
+# load stuff
+@bot.event
+async def on_ready():
+    print(f'{bot.user} is online.')
+    print(f'in {len(bot.guilds)} servers')
+    for x in bot.guilds:
+        print(f'connected to {x.name}')
+    print()
+    await bot.setup_hook()
+            
 bot.run(TOKEN)
