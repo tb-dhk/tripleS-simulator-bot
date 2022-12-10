@@ -22,7 +22,6 @@ intents.reactions = True
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
-MY_GUILD = discord.Object(id=896690066620035112)
 
 class MyClient(discord.Client):
     def __init__(self, *, intents: discord.Intents):
@@ -30,25 +29,15 @@ class MyClient(discord.Client):
         self.tree = app_commands.CommandTree(self)
 
     async def setup_hook(self):
-        self.tree.copy_global_to(guild=MY_GUILD)
-        await self.tree.sync(guild=MY_GUILD)
+        for guild in self.guilds:
+            self.tree.clear_commands(guild=guild)
+        self.tree.add_command(self.tree.get_command("help"), override=True)
+        self.tree.add_command(self.tree.get_command("run"), override=True)
+        await self.tree.sync()
 
 bot = MyClient(intents=intents)
 
 topg = os.getenv('TOPGG_TOKEN')
-
-# load mysql
-@bot.event
-async def on_ready():
-    print(f'{bot.user} is online.')
-        
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
-    
-    if "tripleS" in message.content:
-        await message.channel.send(":eyes:")
 
 story = ""
 unitss = []
@@ -77,33 +66,55 @@ a list of gravity strings (strings that specify the number of members, then each
     """)
 
 @bot.tree.command(name="run", description="run the simulator")
-async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[discord.Attachment], random_members: Optional[bool] = False, unit: Optional[str] = "", random_grav: Optional[bool] = True):
+async def run(
+    interaction, 
+    prefix: str, lineup: str, 
+    haus: Optional[discord.Attachment], 
+    random_members: Optional[bool] = False, 
+    unit: Optional[str] = "", 
+    sgrav: Optional[str] = "", random_sgrav: Optional[bool] = True, 
+    ugrav: Optional[str] = "", random_ugrav: Optional[bool] = True
+):
     print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    await interaction.response.defer()
 
     global unitss
     global story
     global topg
 
-    if story[-18:] == "to be continued...":
-        story = ""
-
     # members + events
     members = lineup.split(" ")
-    gravs = [g.split(".") for g in grav.split("..")]
+    sgravs = [g.split(".") for g in sgrav.split("..")]
+    ugravs = [g.split(".") for g in ugrav.split("..")]
     unitss = [u.split(".") for u in unit.split("..")]
 
-    for x in gravs:
-        if len(x) < 3:
-            await interaction.response.send_message("invalid gravity string.")
+    print(f"""prefix: {prefix}, lineup, {lineup}, 
+    haus: {haus}, random_members: {random_members}
+    unit: {unitss}
+    sgrav: {sgravs}, random_sgrav: {random_sgrav}
+    ugrav: {ugravs}, random_ugrav: {random_ugrav}""")
+
+    for x in ugravs:
+        if x == [""]:
+            ugravs.remove(x)
+        elif len(x) < 3:
+            await interaction.followup.send("invalid gravity string.")
             return
-        
+
+    for x in sgravs:
+        if x == [""]:
+            sgravs.remove(x)
+        elif len(x) < 3:
+            await interaction.followup.send("invalid gravity string.")
+            return
+
     # HAUS classes + methods
     
     if haus != None:
         try:
             ohaus = requests.get(haus).json() 
         except:
-            await interaction.response.send_message("invalid HAUS.")
+            await interaction.followup.send("invalid HAUS.")
             return
     else:
         ohaus = json.load(open("haus.json"))
@@ -153,6 +164,8 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         if len(membs) > 1:
             tab = PrettyTable(["member", "room"])
             p("\nmoving time!")
+
+        haus = hs
         
         beds = []
         for h in house:
@@ -203,8 +216,11 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                     if hs == "seoul":
                         m.seoul = bed
                     else:
-                        m.beds.append(m.beds[-1])
-
+                        try:
+                            m.beds.append(m.beds[-1])
+                        except:
+                            pass
+                        
         if len(membs) > 1:
             p(tab)
         return haus, False
@@ -229,7 +245,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                l.append([m] + p)
         return l
 
-    async def gravity(membs, units):
+    async def ugravity(membs, units):
         global story
         global unitss
         global view
@@ -239,12 +255,8 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
         emoji = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟", "🫶", "❤️", "😊", "✨", "🥹", "🎄", "🔥", "😂", "👍", "🫡", "🎁", "🎡", "🧀"]
             
         p("\ngrand gravity time!")
-        if not random_grav:
-            try:
-                await interaction.response.send_message("grand gravity time!")
-                gm = await interaction.original_response()
-            except:
-                gm = await interaction.followup.send("grand gravity time!")
+        if not random_ugrav:
+            gm = await interaction.followup.send("grand gravity time!")
         tab = PrettyTable(["unit", "description"])
         for x in units:
             found = False
@@ -256,7 +268,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
             if not found:
                 tab.add_row([x, "null"])
         p(tab)
-        if not random_grav:
+        if not random_ugrav:
             cont = gm.content + f"\n```{tab}```"
             await gm.edit(content = cont)
         tab = PrettyTable(units)
@@ -271,11 +283,11 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                 else:
                     pair.append(picked)
                     membs.remove(picked)
-            if not random_grav:
+            if not random_ugrav:
                 subt = PrettyTable(units)
                 for n in range(len(perms(pair))):
                     subt.add_row([pm(m) for m in perms(pair)[n]])
-                stri = (f"\nround {x+1}: ({math.factorial(len(units))*2.5} seconds)\n")
+                stri = (f"\nround {x+1}: ({math.factorial(len(units))*5} seconds)\n")
                 lines = len(str(subt).split("\n"))
                 for row in range(lines):
                     r = str(subt).split("\n")[row]
@@ -283,14 +295,15 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                         stri += ("       " + f"`{r}`\n")
                     else:
                         stri += (emoji[row-3] + f" `{r}`\n")
-                msg = await interaction.followup.send(stri + "\npick the number of your desired permutation: ")
+                timestamp = format_timestamp(arrow.Arrow.now()+timedelta(seconds=int(math.factorial(len(units))*5)), TimestampType.RELATIVE)
+                msg = await interaction.followup.send(stri + f"\npick the number of your desired permutation.\nvoting ends {timestamp}")
                 for x in range(math.factorial(len(units))):
                     try:
                         await msg.add_reaction(emoji[x])
                     except:
                         pass
 
-                await asyncio.sleep(math.factorial(len(units))*2.5)
+                await asyncio.sleep(math.factorial(len(units))*5)
                 
                 cache_msg = discord.utils.get(bot.cached_messages, id=msg.id)
                 votes = {e.emoji: e.count for e in cache_msg.reactions}
@@ -315,7 +328,225 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                 except:
                     pass
         p(tab)
-        return ms
+        
+    def split(lis, count, goal):
+        if count == 0:
+            lis = [lis]
+        if count < goal-1:
+            nlis = []
+            for x in lis:
+                mid = int(len(x)/2)
+                x = split([x[:mid], x[mid:]], count+1, goal)
+                nlis.append(x)
+            lis = nlis
+        if count == 0:
+            return lis[0]
+        return lis
+    
+    def tree(lis):
+        dic = {"final": {"rem": []}}
+        rounds = []
+
+        def todic(lis, pround, depth):
+            try:
+                rounds[depth]
+            except:
+                rounds.append(0)
+            pround["rem"] = lis
+            for x in pround["rem"].copy():
+                if type(x) == list:
+                    pround[f"round {rounds[depth]+1}"] = {"rem": x}
+                    rounds[depth] += 1
+                    pround["rem"].remove(x)
+            for sround in pround.copy():
+                if sround != "rem":
+                    pround[sround] = todic(pround[sround]["rem"], pround[sround], depth+1)
+                    if len(pround[sround].keys()) == 1:
+                        pround[sround] = pround[sround]["rem"]
+            
+            return pround
+
+        return todic(lis, dic["final"], 0)
+
+    def depth(d): # i stole this code from someone on stackoverflow
+        if isinstance(d, dict):
+            return 1 + (max(map(depth, d.values())) if d else 0)
+        return 0
+
+    def name(number):
+        name = ["finals", "semi-finals", "quarter-finals"]
+        try:
+            return name[number]
+        except:
+            th = 2**number
+            if str(th)[-1] == 2:
+                return f"{th}nd-finals"
+            else:
+                return f"{th}th-finals"
+
+    def ptree(lis, rounds):
+        for x in rounds.copy():
+            if x == [] or x == ['']:
+                rounds.remove(x)
+
+        def sp(text, max):
+            text = text
+            while len(text) < max:
+                text += " "
+            return text
+
+        def maxsp(str, max):
+            return max - len(str.split("\n")[-1])
+
+        songs = lis
+        maxl = max([len(s) for s in songs])
+        str = ""
+        push = []
+        for x in range(len(songs)*2-1):
+            if x % 2 == 0:
+                str += sp(songs[int(x/2)], maxl)
+                if x % 4 == 0:
+                    str += " ┐"
+                else:
+                    str += " ┘"
+            if x % 4 == 1:
+                str += maxsp(str, maxl) * " " + " ├ "
+                try:
+                    str += sp(rounds[0][int((x-1)/4)], maxl)
+                except:
+                    str += sp("?", maxl)
+                if len(songs) >= 8:
+                    if x % 8 == 1:
+                        str += " ┐"
+                        push.append(2)
+                    else:
+                        str += " ┘"
+                        push.remove(2)
+            elif 2 in push:
+                str += maxsp(str, (4 + 2*maxl)) * " "
+                if x % 4 == 3:
+                    str += "├ "
+                    try:
+                        str += sp(rounds[1][int((x-3)/8)], maxl)
+                    except:
+                        str += sp("?", maxl)
+                    if len(songs) >= 4:
+                        if x % 16 == 3:
+                            str += " ┐"
+                            push.append(1)
+                        else:
+                            str += " ┘"
+                            push.remove(1)
+                else:
+                    str += "|"
+            if 1 in push and x % 16 != 3:
+                str += maxsp(str, (7 + 3*maxl)) * " "
+                if x % 16 == 7:
+                    str += "├ "
+                    try:
+                        str += sp(rounds[2][int((x-7)/16)], maxl)
+                    except:
+                        str += sp("?", maxl)
+                    if len(songs) >= 16:
+                        if x % 32 == 7:
+                            str += " ┐"
+                            push.append(3)
+                        else:
+                            str += " ┘" 
+                            push.remove(3)
+                else:
+                    str += "|"
+            if 3 in push and x % 32 != 7:
+                str += maxsp(str, (10 + 4*maxl)) * " "
+                if x % 32 == 15:
+                    str += "├ "
+                    try:
+                        str += sp(rounds[3][int((x-15)/32)], maxl)
+                    except:
+                        str += sp("?", maxl)
+                else:
+                    str += "|"
+            if x % 8 == 7:
+                pass 
+            str += "\n" 
+        return str
+
+    async def rnd(dic, count, goal, r, gm, rounds, songs): 
+        thing = None
+        msg = None
+        song = None
+        cont = gm.content
+        emoji = ["0️⃣", "1️⃣"]
+        if count < goal and type(dic) == dict or (count == 0 and goal == 0):
+            if r == 1:
+                rounds.append([])
+            for x in dic.copy():
+                if x != "rem":
+                    if count == goal-1 or (count == 0 and goal == 0):
+                        if (count == 0 and goal == 0):
+                            ch = dic
+                        else:
+                            ch = dic[x]
+                        table = PrettyTable(["number", "song"])
+                        table.add_row([0, ch[0]])
+                        table.add_row([1, ch[1]])
+                        if not random_sgrav:
+                            timestamp = format_timestamp(arrow.Arrow.now()+timedelta(seconds=10), TimestampType.RELATIVE)
+                            msg = await interaction.followup.send(f"gravity {name(goal)}, round {r}: (10.0 seconds)\n```{table}```\npick the number of your desired song.\nvoting ends {timestamp}")
+                            for n in range(2):
+                                try:
+                                    await msg.add_reaction(emoji[n])
+                                except:
+                                    pass
+                            await asyncio.sleep(10)
+                            cache_msg = discord.utils.get(bot.cached_messages, id=msg.id)
+                            votes = {e.emoji: e.count for e in cache_msg.reactions}
+                            votes = dict(sorted(votes.items(), key=lambda item: item[1]))
+                            chosen = ch[emoji.index(list(votes.keys())[-1])]
+                            await msg.delete()
+                        else:
+                            chosen = choice(ch)
+                        rounds[-1].append(chosen)
+                        await gm.edit(content = f"event gravity time!\n```{ptree(songs, rounds)}```")
+                        if count == 0 and goal == 0:
+                            p(f"{chosen} has been picked as the title song for your group!")
+                            song = chosen
+                        else:
+                            p(f"{chosen} has been picked.\n")
+                            song = ""
+                        if not (count == 0 and goal == 0):
+                            dic["rem"].append(chosen)
+                            del dic[x]
+                            thing = dic["rem"]
+                            if len(dic.keys()) == 1:
+                                dic = dic["rem"]
+                        return dic, thing, msg, song, cont, rounds
+                    else:
+                        if type(dic[x]) == dict and list(dic[x].keys()) != ["rem"]:
+                            dic[x], thing, msg, song, cont, rounds = await rnd(dic[x], count+1, goal, r, gm, rounds, songs)
+                            if thing:
+                                break
+        return dic, thing, msg, song, cont, rounds
+
+    async def sgravity(songs):
+        p("\nevent gravity time!")
+        gm = await interaction.followup.send(f"event gravity time!\n```{ptree(songs, [])}```")
+        if len(songs) not in [4, 8, 16]:
+            print("number of songs in sgravity should be either 4, 8 or 16.")
+            exit()
+        else:
+            tr = tree(split(songs, 0, math.log(len(songs), 2)))
+        d = int(math.log(len(songs), 2)) 
+        rounds = []
+        for x in range(d, -1, -1):
+            count = 0
+            while 1:
+                count += 1
+                tr, thing, msg, song, cont, rounds = await rnd(tr, 0, x, count, gm, rounds, songs)
+                if not thing:
+                    break
+        await gm.edit(content=f"event gravity time!\n```{ptree(songs, rounds)}```\n{song} has been chosen as the title track.")
+        p(f"event gravity time!\n```{ptree(songs, rounds)}```\n{song} has been chosen as the title track.")
 
     def phaus(haus, seoul=False, final=False):
         global story
@@ -379,7 +610,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
             tab.add_row([pm(omembers[-1]), omembers[-1].color, bed])
         
         moved = False
-                
+
         for e in events: 
             match e[0]:
                 case "mmove":
@@ -394,7 +625,7 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                     haus, brk= move(haus, omembers, hs, hs[-1])
                     phaus(haus)
                     p("\n")
-                case "gravity":
+                case "ugravity" | "sgravity":
                     gravities += 1
                     haus, brk = move(haus, [omembers[-1]], hs)
                     if not moved:
@@ -405,10 +636,20 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                         p(tab)
                         tab = PrettyTable(["member", "color", "bed"])
                     phaus(haus)
-                    await gravity(omembers.copy(), e[1])
+                    if e[0] == "ugravity":
+                        await ugravity(omembers, e[1])
+                    else:
+                        await sgravity(e[1])
                     haus, brk = move(haus, omembers, "seoul")
                     phaus(haus, True)
                     p("\n")
+                case "end":
+                    p(f"new wave of {prefix}!")
+                    p(f"wave {str(wave)}:")
+                    p(tab)
+                    tab = PrettyTable(["member", "color", "bed"])
+                    phaus(haus)
+                    p("\n") 
         
         if full(ohaus, "seoul") and len(events) > 0:
             p(f"the seoul HAUS is full.\n")
@@ -464,14 +705,16 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
     voted = requests.get(f"https://top.gg/api/bots/1041703388057960479/check?userId={interaction.user.id}", headers={"Authorization": topg}).json()["voted"]
     owners = requests.get(f"https://top.gg/api/bots/1041703388057960479/", headers={"Authorization": topg}).json()["owners"] 
     cowner = str(interaction.user.id) in owners
-    if not (voted or cowner) and not random_grav:
-        await interaction.response.send_message("to use voted/manual gravity, please vote at https://top.gg/bot/1041703388057960479/vote/.")
+    if not (voted or cowner) and (not random_ugrav or not random_sgrav):
+        await interaction.followup.send("to use voted/manual gravity, please vote at https://top.gg/bot/1041703388057960479/vote/.")
+        return
     else:
         omembers = []
         gravities = 0
         mmoves = 1
         wave = 0
         tab = PrettyTable(["member", "color", "bed"])
+        count = len(members)
 
         for x in range(len(members)):
             events = []
@@ -502,19 +745,21 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
                     hs = hauses[:y+1]
                     break
 
-            for gravi in gravs:
-                if x+1 == int(gravi[0]):
-                    events.append(["gravity", gravi[1:]])
+            for grav in ugravs:
+                if x+1 == int(grav[0]):
+                    events.append(["ugravity", grav[1:]])
+
+            for grav in sgravs:
+                if x+1 == int(grav[0]):
+                    events.append(["sgravity", grav[1:]])
+
+            if x == count-1:
+                events.append(["end"])
             
             om = omembers.copy()
 
-            lis = await event(uhaus, om, x+1, hs, events, gravities, mmoves, tab, wave)
-            uhaus = lis[0]
-            gravities = lis[1]
-            mmoves = lis[2]
-            tab = lis[3]
-            wave = lis[4]
-            if lis[5]:
+            uhaus, gravities, mmoves, tab, wave, test = await event(uhaus, om, x+1, hs, events, gravities, mmoves, tab, wave)
+            if test:
                 break
 
             
@@ -527,9 +772,6 @@ async def run(interaction, prefix: str, lineup: str, grav: str, haus: Optional[d
 
         as_bytes = map(str.encode, story)
         content = b"".join(as_bytes)
-        try:
-            await interaction.response.send_message("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
-        except:
-            await interaction.followup.send("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
-
+        await interaction.followup.send("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
+        
 bot.run(TOKEN)
