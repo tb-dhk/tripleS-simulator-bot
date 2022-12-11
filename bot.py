@@ -44,40 +44,52 @@ topg = os.getenv('TOPGG_TOKEN')
 story = ""
 unitss = []
 
+# embeds
+class error_embed(discord.Embed):
+    def __init__(self, error):
+        super().__init__()
+        self.title = f"error! invalid {error}."
+        self.description = f"check `/help` to see if your {error.split()[-1]} is in the right format. otherwise, please join the support server here.\nhttps://discord.gg/GPfpUNmxPP"
+        self.color = discord.Color.dark_red()
+
 # the command
 @bot.tree.command(name="help", description="help")
 async def help(interaction):
     print(f"/help was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
 
-    await interaction.response.send_message("""
-__**parameters for `/run`:**__
-    
-**prefix**
+    help1 = """prefix
 the letter that comes before the serial number (e.g. 'S' for tripleS)
 
-**lineup**
+lineup
 list of members, space-separated
 
-**grav**
+grav
 a list of gravity strings (strings that specify the number of members, then each unit separated by periods, e.g. '8.aaa.kre'). these gravity strings should be separated by two periods.
 
-**haus** a valid haus.json file, with a seoul HAUS in case of gravity. the default haus.json file can be found here (https://github.com/shuu-wasseo/tripleS-simulator-bot/blob/main/haus.json)
+haus 
+a valid haus.json file, with a seoul HAUS in case of gravity. the default haus.json file can be found here (https://github.com/shuu-wasseo/tripleS-simulator-bot/blob/main/haus.json)"""
 
-***[OPTIONAL]***
-
-**random_members** (defaults to False)
+    help2 = """random_members (defaults to False)
 whether the reveal of the members is random or in the specified order.
 
-**unit** (defaults to "")
+unit (defaults to "")
 units and their descriptions, in the same format as gravity strings
 
-**random_grav** (defaults to False)
+random_grav (defaults to False)
 whether gravity is random or chosen by the user(s) through voting (with emojis). requires voting for the bot on top.gg to enable.
-https://top.gg/bot/1041703388057960479/vote
+https://top.gg/bot/1041703388057960479/vote"""
 
-sample command:
-```/run prefix: S lineup: ysy jhr ljw kcy kyy ksm knk gyb ked grav: 8.aaa.kre unit: aaa.acidangelfromasia..kre.krystaleyes random_grav: false```
-    """)
+    sample = """if you don't know where to start, you can try this first!\n```/run prefix: S lineup: ysy jhr ljw kcy kyy ksm knk gyb ked grav: 8.aaa.kre unit: aaa.acidangelfromasia..kre.krystaleyes random_grav: false```"""
+
+    embed1 = discord.Embed(title = "compulsory parameters", description = "these parameters must be passed.")
+    for x in help1.split("\n\n"):
+        embed1.add_field(name = x.split("\n")[0], value = x.split("\n")[1], inline = True)
+    embed2 = discord.Embed(title = "optional parameters", description = "these parameters need not be passed.")
+    for x in help2.split("\n\n"):
+        embed2.add_field(name = x.split("\n")[0], value = x.split("\n")[1], inline = True)
+    embed3 = discord.Embed(title = "sample command", description = sample)
+
+    await interaction.response.send_message("how to use `/run`:", embeds=[embed1, embed2, embed3])
 
 @bot.tree.command(name="run", description="run the simulator")
 async def run(
@@ -112,15 +124,14 @@ async def run(
         if x == [""]:
             ggravs.remove(x)
         elif len(x) < 3:
-            await interaction.followup.send("invalid grand gravity string.")
+            await interaction.followup.send(embed=error_embed("grand gravity string"))
             return
 
     for x in egravs:
-        print(x, len(x))
         if x == [""]:
             egravs.remove(x)
         elif len(x) not in [5, 9, 17]:
-            await interaction.followup.send("invalid event gravity string.")
+            await interaction.followup.send(embed=error_embed("event gravity string"))
             return
 
     # HAUS classes + methods
@@ -129,7 +140,7 @@ async def run(
         try:
             ohaus = requests.get(haus).json() 
         except:
-            await interaction.followup.send("invalid HAUS.")
+            await interaction.followup.send(embed=error_embed("HAUS string"))
             return
     else:
         ohaus = json.load(open("haus.json"))
@@ -268,10 +279,11 @@ async def run(
         msg = []
         votes = []
         emoji = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟", "🫶", "❤️", "😊", "✨", "🥹", "🎄", "🔥", "😂", "👍", "🫡", "🎁", "🎡", "🧀"]
+        results = {u: [] for u in units}
             
         p("\ngrand gravity time!")
         if not random_ggrav:
-            gm = await interaction.followup.send("grand gravity time!")
+            gm = await interaction.followup.send(embed=discord.Embed(title="grand gravity time!"))
         tab = PrettyTable(["unit", "description"])
         for x in units:
             found = False
@@ -284,34 +296,23 @@ async def run(
                 tab.add_row([x, "null"])
         p(tab)
         if not random_ggrav:
-            cont = gm.content + f"\n```{tab}```"
-            await gm.edit(content = cont)
+            cont = f"\n```{tab}```"
+            await gm.edit(embed=discord.Embed(title="grand gravity time!", description=cont))
+            embed = discord.Embed(title="grand gravity time!", description = ", ".join(units))
         tab = PrettyTable(units)
-        ms = membs.copy()
         for x in range(math.ceil(len(membs)/len(units))):
-            pair = []
-            for y in range(len(units)):
-                try:
-                    picked = choice(membs)
-                except:
-                    pass
-                else:
-                    pair.append(picked)
-                    membs.remove(picked)
+            pair = membs.sample(len(units))
+            for x in pair:
+                membs.remove(x)
             if not random_ggrav:
-                subt = PrettyTable(units)
+                stri = discord.Embed(title=f"\nround {x+1} ({math.factorial(len(units))*5} seconds)\n")
+                desc = ""
                 for n in range(len(perms(pair))):
-                    subt.add_row([pm(m) for m in perms(pair)[n]])
-                stri = (f"\nround {x+1}: ({math.factorial(len(units))*5} seconds)\n")
-                lines = len(str(subt).split("\n"))
-                for row in range(lines):
-                    r = str(subt).split("\n")[row]
-                    if (row >= 0 and row <= 2) or row == lines-1:
-                        stri += ("       " + f"`{r}`\n")
-                    else:
-                        stri += (emoji[row-3] + f" `{r}`\n")
+                    stri.add_field(name=f"option {emoji[n]}", value=str("\n".join([f"{pm(perms(pair)[n][m])} in {units[m]}" for m in range(len(perms(pair)[n]))])))
+                stri.description = desc
                 timestamp = format_timestamp(arrow.Arrow.now()+timedelta(seconds=int(math.factorial(len(units))*5)), TimestampType.RELATIVE)
-                msg = await interaction.followup.send(stri + f"\npick the number of your desired permutation.\nvoting ends {timestamp}")
+                stri.description += f"\npick the number of your desired permutation.\nvoting ends {timestamp}"
+                msg = await interaction.followup.send(embed=stri)
                 for x in range(math.factorial(len(units))):
                     try:
                         await msg.add_reaction(emoji[x])
@@ -326,17 +327,11 @@ async def run(
                 votes = dict(sorted(votes.items(), key=lambda item: item[1]))
                 pick = emoji.index(list(votes.keys())[-1])
                 await msg.delete()
-                tab.add_row([pm(m) for m in pair])
-                await gm.edit(content = cont + f"```{tab}```")
-                while 1:
-                    try:
-                        pair = perms(pair)[int(pick)]
-                    except:
-                        pass
-                    else:
-                        break
-            else:
-                tab.add_row([pm(m) for m in pair])
+
+                try:
+                    pair = perms(pair)[int(pick)]
+                except:
+                    pass
             for y in range(len(units)):
                 try:
                     pair[y].gravity.append(units[y])
