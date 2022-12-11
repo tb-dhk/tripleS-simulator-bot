@@ -13,7 +13,9 @@ import json
 import asyncio
 import requests
 from prettytable import PrettyTable
-import requests
+from datetime import timedelta
+from arrow import arrow
+from discord_timestamps import format_timestamp, TimestampType
 
 intents = discord.Intents.default()
 intents.messages = True
@@ -45,9 +47,9 @@ unitss = []
 # the command
 @bot.tree.command(name="help", description="help")
 async def help(interaction):
-    print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    print(f"/help was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
 
-    await interaction.respond("""
+    await interaction.response.send_message("""
 __**parameters for `/run`:**__
     
 **prefix**
@@ -56,13 +58,25 @@ the letter that comes before the serial number (e.g. 'S' for tripleS)
 **lineup**
 list of members, space-separated
 
-**random**
-whether the reveal of the members is random or in the specified order.
-
 **grav**
-a list of gravity strings (strings that specify the number of members, then each unit separated by colons, e.g. '8:aaa:kre'). these gravity strings should be separated by spaces.
+a list of gravity strings (strings that specify the number of members, then each unit separated by periods, e.g. '8.aaa.kre'). these gravity strings should be separated by two periods.
 
 **haus** a valid haus.json file, with a seoul HAUS in case of gravity. the default haus.json file can be found here (https://github.com/shuu-wasseo/tripleS-simulator-bot/blob/main/haus.json)
+
+***[OPTIONAL]***
+
+**random_members** (defaults to False)
+whether the reveal of the members is random or in the specified order.
+
+**unit** (defaults to "")
+units and their descriptions, in the same format as gravity strings
+
+**random_grav** (defaults to False)
+whether gravity is random or chosen by the user(s) through voting (with emojis). requires voting for the bot on top.gg to enable.
+https://top.gg/bot/1041703388057960479/vote
+
+sample command:
+```/run prefix: S lineup: ysy jhr ljw kcy kyy ksm knk gyb ked grav: 8.aaa.kre unit: aaa.acidangelfromasia..kre.krystaleyes random_grav: false```
     """)
 
 @bot.tree.command(name="run", description="run the simulator")
@@ -72,8 +86,8 @@ async def run(
     haus: Optional[discord.Attachment], 
     random_members: Optional[bool] = False, 
     unit: Optional[str] = "", 
-    sgrav: Optional[str] = "", random_sgrav: Optional[bool] = True, 
-    ugrav: Optional[str] = "", random_ugrav: Optional[bool] = True
+    egrav: Optional[str] = "", random_egrav: Optional[bool] = True, 
+    ggrav: Optional[str] = "", random_ggrav: Optional[bool] = True
 ):
     print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
     await interaction.response.defer()
@@ -84,28 +98,29 @@ async def run(
 
     # members + events
     members = lineup.split(" ")
-    sgravs = [g.split(".") for g in sgrav.split("..")]
-    ugravs = [g.split(".") for g in ugrav.split("..")]
+    egravs = [g.split(".") for g in egrav.split("..")]
+    ggravs = [g.split(".") for g in ggrav.split("..")]
     unitss = [u.split(".") for u in unit.split("..")]
 
     print(f"""prefix: {prefix}, lineup, {lineup}, 
     haus: {haus}, random_members: {random_members}
     unit: {unitss}
-    sgrav: {sgravs}, random_sgrav: {random_sgrav}
-    ugrav: {ugravs}, random_ugrav: {random_ugrav}""")
+    egrav: {egravs}, random_egrav: {random_egrav}
+    ggrav: {ggravs}, random_ggrav: {random_ggrav}""")
 
-    for x in ugravs:
+    for x in ggravs:
         if x == [""]:
-            ugravs.remove(x)
+            ggravs.remove(x)
         elif len(x) < 3:
-            await interaction.followup.send("invalid gravity string.")
+            await interaction.followup.send("invalid grand gravity string.")
             return
 
-    for x in sgravs:
+    for x in egravs:
+        print(x, len(x))
         if x == [""]:
-            sgravs.remove(x)
-        elif len(x) < 3:
-            await interaction.followup.send("invalid gravity string.")
+            egravs.remove(x)
+        elif len(x) not in [5, 9, 17]:
+            await interaction.followup.send("invalid event gravity string.")
             return
 
     # HAUS classes + methods
@@ -245,7 +260,7 @@ async def run(
                l.append([m] + p)
         return l
 
-    async def ugravity(membs, units):
+    async def ggravity(membs, units):
         global story
         global unitss
         global view
@@ -255,7 +270,7 @@ async def run(
         emoji = ["0️⃣", "1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟", "🫶", "❤️", "😊", "✨", "🥹", "🎄", "🔥", "😂", "👍", "🫡", "🎁", "🎡", "🧀"]
             
         p("\ngrand gravity time!")
-        if not random_ugrav:
+        if not random_ggrav:
             gm = await interaction.followup.send("grand gravity time!")
         tab = PrettyTable(["unit", "description"])
         for x in units:
@@ -268,7 +283,7 @@ async def run(
             if not found:
                 tab.add_row([x, "null"])
         p(tab)
-        if not random_ugrav:
+        if not random_ggrav:
             cont = gm.content + f"\n```{tab}```"
             await gm.edit(content = cont)
         tab = PrettyTable(units)
@@ -283,7 +298,7 @@ async def run(
                 else:
                     pair.append(picked)
                     membs.remove(picked)
-            if not random_ugrav:
+            if not random_ggrav:
                 subt = PrettyTable(units)
                 for n in range(len(perms(pair))):
                     subt.add_row([pm(m) for m in perms(pair)[n]])
@@ -490,7 +505,7 @@ async def run(
                         table = PrettyTable(["number", "song"])
                         table.add_row([0, ch[0]])
                         table.add_row([1, ch[1]])
-                        if not random_sgrav:
+                        if not random_egrav:
                             timestamp = format_timestamp(arrow.Arrow.now()+timedelta(seconds=10), TimestampType.RELATIVE)
                             msg = await interaction.followup.send(f"gravity {name(goal)}, round {r}: (10.0 seconds)\n```{table}```\npick the number of your desired song.\nvoting ends {timestamp}")
                             for n in range(2):
@@ -528,14 +543,10 @@ async def run(
                                 break
         return dic, thing, msg, song, cont, rounds
 
-    async def sgravity(songs):
+    async def egravity(songs):
         p("\nevent gravity time!")
         gm = await interaction.followup.send(f"event gravity time!\n```{ptree(songs, [])}```")
-        if len(songs) not in [4, 8, 16]:
-            print("number of songs in sgravity should be either 4, 8 or 16.")
-            exit()
-        else:
-            tr = tree(split(songs, 0, math.log(len(songs), 2)))
+        tr = tree(split(songs, 0, math.log(len(songs), 2)))
         d = int(math.log(len(songs), 2)) 
         rounds = []
         for x in range(d, -1, -1):
@@ -625,7 +636,7 @@ async def run(
                     haus, brk= move(haus, omembers, hs, hs[-1])
                     phaus(haus)
                     p("\n")
-                case "ugravity" | "sgravity":
+                case "ggravity" | "egravity":
                     gravities += 1
                     haus, brk = move(haus, [omembers[-1]], hs)
                     if not moved:
@@ -636,10 +647,10 @@ async def run(
                         p(tab)
                         tab = PrettyTable(["member", "color", "bed"])
                     phaus(haus)
-                    if e[0] == "ugravity":
-                        await ugravity(omembers, e[1])
+                    if e[0] == "ggravity":
+                        await ggravity(omembers, e[1])
                     else:
-                        await sgravity(e[1])
+                        await egravity(e[1])
                     haus, brk = move(haus, omembers, "seoul")
                     phaus(haus, True)
                     p("\n")
@@ -705,7 +716,7 @@ async def run(
     voted = requests.get(f"https://top.gg/api/bots/1041703388057960479/check?userId={interaction.user.id}", headers={"Authorization": topg}).json()["voted"]
     owners = requests.get(f"https://top.gg/api/bots/1041703388057960479/", headers={"Authorization": topg}).json()["owners"] 
     cowner = str(interaction.user.id) in owners
-    if not (voted or cowner) and (not random_ugrav or not random_sgrav):
+    if not (voted or cowner) and (not random_ggrav or not random_egrav):
         await interaction.followup.send("to use voted/manual gravity, please vote at https://top.gg/bot/1041703388057960479/vote/.")
         return
     else:
@@ -745,13 +756,13 @@ async def run(
                     hs = hauses[:y+1]
                     break
 
-            for grav in ugravs:
+            for grav in ggravs:
                 if x+1 == int(grav[0]):
-                    events.append(["ugravity", grav[1:]])
+                    events.append(["ggravity", grav[1:]])
 
-            for grav in sgravs:
+            for grav in egravs:
                 if x+1 == int(grav[0]):
-                    events.append(["sgravity", grav[1:]])
+                    events.append(["egravity", grav[1:]])
 
             if x == count-1:
                 events.append(["end"])
