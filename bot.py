@@ -7,7 +7,7 @@ from discord import app_commands
 from typing import Optional
 from dotenv import load_dotenv
 from io import BytesIO
-from random import randint, choice
+from random import randint, choice, sample
 import math
 import json
 import asyncio
@@ -101,41 +101,32 @@ async def run(
     egrav: Optional[str] = "", random_egrav: Optional[bool] = True, 
     ggrav: Optional[str] = "", random_ggrav: Optional[bool] = True
 ):
-    print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
-    await interaction.response.defer()
 
     global unitss
     global story
     global topg
 
-    # members + events
+    # parsing strings
     members = lineup.split(" ")
     egravs = [g.split(".") for g in egrav.split("..")]
     ggravs = [g.split(".") for g in ggrav.split("..")]
     unitss = [u.split(".") for u in unit.split("..")]
 
-    print(f"""prefix: {prefix}, lineup, {lineup}, 
-    haus: {haus}, random_members: {random_members}
-    unit: {unitss}
-    egrav: {egravs}, random_egrav: {random_egrav}
-    ggrav: {ggravs}, random_ggrav: {random_ggrav}""")
-
+    # verification
     for x in ggravs:
-        if x == [""]:
+        if x in ([""], []):
             ggravs.remove(x)
         elif len(x) < 3:
             await interaction.followup.send(embed=error_embed("grand gravity string"))
             return
 
     for x in egravs:
-        if x == [""]:
+        if x in ([""], []):
             egravs.remove(x)
         elif len(x) not in [5, 9, 17]:
             await interaction.followup.send(embed=error_embed("event gravity string"))
             return
 
-    # HAUS classes + methods
-    
     if haus != None:
         try:
             ohaus = requests.get(haus).json() 
@@ -144,6 +135,40 @@ async def run(
             return
     else:
         ohaus = json.load(open("haus.json"))
+
+    print(f"/run was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
+    print(f"""prefix: {prefix}, lineup, {lineup}, 
+    haus: {haus}, random_members: {random_members}
+    unit: {unitss}
+    egrav: {egravs}, random_egrav: {random_egrav}
+    ggrav: {ggravs}, random_ggrav: {random_ggrav}""")
+
+    args = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s triple{prefix.upper()} simulation", description=f"lineup:\n{' '.join(lineup.split())}")
+
+    for name, element in {"haus": haus, "random_members": random_members, "unit": unitss, "egrav": egravs, "random_egrav": random_egrav, "ggrav": ggravs, "random_ggrav": random_ggrav}.items():
+        if type(element) == bool:
+            if (element == random_members and not element) or (element in [random_egrav, random_ggrav] and element):
+                value = f"{element} (default)"
+            else:
+                value = f"{element}"
+        elif type(element) == list:
+            if element == []:
+                value = "none"
+            elif name == "unit":
+                value = "\n".join([": ".join(u) for u in element])
+            elif name in ["egrav", "ggrav"]:
+                value = "\n".join([u[0] + ": " + " ".join(u[1:]) for u in element])
+        else:
+            if element == None:
+                value = "no file provided"
+            else:
+                value = element.filename
+            args.add_field(name=name, value=value)
+        args.add_field(name=name, value=value)
+            
+    await interaction.response.send_message(embed=args)
+
+    # HAUS
 
     uhaus = ohaus.copy()
         
@@ -186,12 +211,12 @@ async def run(
     def move(house, membs, hs, move_event=""):
         global story
 
+        haus = house
+
         length = len(membs)
         if len(membs) > 1:
             tab = PrettyTable(["member", "room"])
             p("\nmoving time!")
-
-        haus = hs
         
         beds = []
         for h in house:
@@ -238,15 +263,11 @@ async def run(
                     else:
                         m.beds.append(bed)
                 else:
-                    haus = house
                     if hs == "seoul":
                         m.seoul = bed
                     else:
-                        try:
-                            m.beds.append(m.beds[-1])
-                        except:
-                            pass
-                        
+                        m.beds.append(m.beds[-1])
+
         if len(membs) > 1:
             p(tab)
         return haus, False
@@ -282,56 +303,69 @@ async def run(
         results = {u: [] for u in units}
             
         p("\ngrand gravity time!")
-        if not random_ggrav:
-            gm = await interaction.followup.send(embed=discord.Embed(title="grand gravity time!"))
         tab = PrettyTable(["unit", "description"])
+        unis = {}
         for x in units:
             found = False
             for y in unitss:
                 if y[0] == x:
                     tab.add_row(y)
+                    unis[x] = y[1]
                     found = True
                     break
             if not found:
                 tab.add_row([x, "null"])
+                unis[x] = "null"
         p(tab)
         if not random_ggrav:
-            cont = f"\n```{tab}```"
-            await gm.edit(embed=discord.Embed(title="grand gravity time!", description=cont))
-            embed = discord.Embed(title="grand gravity time!", description = ", ".join(units))
+            embed = discord.Embed(title="grand gravity time!", description="\n".join([f"{unit}: {desc}" for unit, desc in unis.items()]))
+            gm = await interaction.followup.send(embed=embed)
         tab = PrettyTable(units)
         for x in range(math.ceil(len(membs)/len(units))):
-            pair = membs.sample(len(units))
-            for x in pair:
-                membs.remove(x)
+            pair = sample(membs, len(units))
+            for m in pair:
+                membs.remove(m)
             if not random_ggrav:
                 stri = discord.Embed(title=f"\nround {x+1} ({math.factorial(len(units))*5} seconds)\n")
                 desc = ""
                 for n in range(len(perms(pair))):
-                    stri.add_field(name=f"option {emoji[n]}", value=str("\n".join([f"{pm(perms(pair)[n][m])} in {units[m]}" for m in range(len(perms(pair)[n]))])))
+                    stri.add_field(name=f"option {emoji[n]}", value=str("\n".join([f"{units[m]}: {pm(perms(pair)[n][m])}" for m in range(len(perms(pair)[n]))])))
                 stri.description = desc
                 timestamp = format_timestamp(arrow.Arrow.now()+timedelta(seconds=int(math.factorial(len(units))*5)), TimestampType.RELATIVE)
                 stri.description += f"\npick the number of your desired permutation.\nvoting ends {timestamp}"
-                msg = await interaction.followup.send(embed=stri)
+                try:
+                    await gm.edit(embeds=[embed, stri])
+                except:
+                    gm = await interaction.followup.send(embeds=[embed, stri])
                 for x in range(math.factorial(len(units))):
                     try:
-                        await msg.add_reaction(emoji[x])
+                        await gm.add_reaction(emoji[x])
                     except:
                         pass
 
                 await asyncio.sleep(math.factorial(len(units))*5)
                 
-                cache_msg = discord.utils.get(bot.cached_messages, id=msg.id)
+                cache_msg = discord.utils.get(bot.cached_messages, id=gm.id)
                 votes = {e.emoji: e.count for e in cache_msg.reactions}
                 
                 votes = dict(sorted(votes.items(), key=lambda item: item[1]))
                 pick = emoji.index(list(votes.keys())[-1])
-                await msg.delete()
+                await gm.delete()
 
                 try:
                     pair = perms(pair)[int(pick)]
                 except:
                     pass
+
+                for x in range(len(pair)):
+                    results[units[x]].append(pair[x])
+
+                embed.clear_fields()
+                for unit, members in results.items(): 
+                    embed.add_field(name=unit, value="\n".join([pm(m) for m in members]))
+                
+            else:
+                tab.add_row([pm(m) for m in pair])
             for y in range(len(units)):
                 try:
                     pair[y].gravity.append(units[y])
