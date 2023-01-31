@@ -44,6 +44,9 @@ topg = os.getenv('TOPGG_TOKEN')
 story = ""
 unitss = []
 
+
+
+
 # embeds
 class error_embed(discord.Embed):
     def __init__(self, error):
@@ -89,7 +92,12 @@ https://top.gg/bot/1041703388057960479/vote"""
         embed2.add_field(name = x.split("\n")[0], value = x.split("\n")[1], inline = True)
     embed3 = discord.Embed(title = "sample command", description = sample)
 
-    await interaction.response.send_message("how to use `/run`:", embeds=[embed1, embed2, embed3])
+    embeds = [embed1, embed2, embed3]
+
+    for e in embeds:
+        e.color = discord.Color.teal()
+
+    await interaction.response.send_message("how to use `/run`:", embeds=embeds)
 
 @bot.tree.command(name="run", description="run the simulator")
 async def run(
@@ -143,7 +151,7 @@ async def run(
     egrav: {egravs}, random_egrav: {random_egrav}
     ggrav: {ggravs}, random_ggrav: {random_ggrav}""")
 
-    args = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s triple{prefix.upper()} simulation", description=f"lineup:\n{' '.join(lineup.split())}")
+    args = discord.Embed(title=f"{interaction.user.display_name} ({interaction.user.name})'s triple{prefix.upper()} simulation", description=f"lineup:\n{' '.join(lineup.split())}", color=discord.Color.dark_green())
 
     for name, element in {"haus": haus, "random_members": random_members, "unit": unitss, "egrav": egravs, "random_egrav": random_egrav, "ggrav": ggravs, "random_ggrav": random_ggrav}.items():
         if type(element) == bool:
@@ -318,7 +326,7 @@ async def run(
                 unis[x] = "null"
         p(tab)
         if not random_ggrav:
-            embed = discord.Embed(title="grand gravity time!", description="\n".join([f"{unit}: {desc}" for unit, desc in unis.items()]))
+            embed = discord.Embed(title="grand gravity time!", description="\n".join([f"{unit}: {desc}" for unit, desc in unis.items()]), color=discord.Color.magenta())
             gm = await interaction.followup.send(embed=embed)
         tab = PrettyTable(units)
         for x in range(math.ceil(len(membs)/len(units))):
@@ -326,7 +334,7 @@ async def run(
             for m in pair:
                 membs.remove(m)
             if not random_ggrav:
-                stri = discord.Embed(title=f"\nround {x+1} ({math.factorial(len(units))*5} seconds)\n")
+                stri = discord.Embed(title=f"\nround {x+1} ({math.factorial(len(units))*5} seconds)\n", color=discord.Color.magenta())
                 desc = ""
                 for n in range(len(perms(pair))):
                     stri.add_field(name=f"option {emoji[n]}", value=str("\n".join([f"{units[m]}: {pm(perms(pair)[n][m])}" for m in range(len(perms(pair)[n]))])))
@@ -536,7 +544,7 @@ async def run(
                         table.add_row([1, ch[1]])
                         if not random_egrav:
                             timestamp = format_timestamp(arrow.Arrow.now()+timedelta(seconds=10), TimestampType.RELATIVE)
-                            msg = await interaction.followup.send(f"gravity {name(goal)}, round {r}: (10.0 seconds)\n```{table}```\npick the number of your desired song.\nvoting ends {timestamp}")
+                            msg = await interaction.followup.send(embed=discord.Embed(title=f"gravity {name(goal)}, round {r}: (10.0 seconds)", description=f"```{table}```\npick the number of your desired song.\nvoting ends {timestamp}", color=discord.Color.yellow()))
                             for n in range(2):
                                 try:
                                     await msg.add_reaction(emoji[n])
@@ -574,7 +582,7 @@ async def run(
 
     async def egravity(songs):
         p("\nevent gravity time!")
-        gm = await interaction.followup.send(f"event gravity time!\n```{ptree(songs, [])}```")
+        gm = await interaction.followup.send(embed=discord.Embed(title=f"event gravity time!", description=f"```{ptree(songs, [])}```", color=discord.Color.yellow()))
         tr = tree(split(songs, 0, math.log(len(songs), 2)))
         d = int(math.log(len(songs), 2)) 
         rounds = []
@@ -814,4 +822,13 @@ async def run(
         content = b"".join(as_bytes)
         await interaction.followup.send("your simulation:", file=discord.File(BytesIO(content), "simulated.txt"))
         
+@bot.event
+async def on_ready():
+    print(f'{bot.user} is online.')
+    print(f'in {len(bot.guilds)} servers')
+    for x in bot.guilds:
+        print(f'connected to {x.name}')
+    print()
+    await bot.setup_hook()
+
 bot.run(TOKEN)
