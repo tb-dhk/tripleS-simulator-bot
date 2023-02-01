@@ -61,6 +61,7 @@ async def help(interaction):
     print(f"/help was used in {interaction.channel} ({interaction.guild}) by {interaction.user}.")
 
     help1 = """prefix
+    
 the letter that comes before the serial number (e.g. 'S' for tripleS)
 
 lineup
@@ -758,6 +759,7 @@ async def run(
 
     # main code
     voted = requests.get(f"https://top.gg/api/bots/1041703388057960479/check?userId={interaction.user.id}", headers={"Authorization": topg}).json()["voted"]
+    print(voted)
     owners = requests.get(f"https://top.gg/api/bots/1041703388057960479/", headers={"Authorization": topg}).json()["owners"] 
     cowner = str(interaction.user.id) in owners
     if not (voted or cowner) and (not random_ggrav or not random_egrav):
@@ -838,4 +840,14 @@ async def on_ready():
     print()
     await bot.setup_hook()
 
+# load stuff
+@bot.event
+async def on_ready():
+    print(f'{bot.user} is online.')
+    print(f'in {len(bot.guilds)} servers')
+    for x in bot.guilds:
+        print(f'connected to {x.name}')
+    print()
+    await bot.setup_hook()
+            
 bot.run(TOKEN)
