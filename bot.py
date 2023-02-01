@@ -66,10 +66,13 @@ the letter that comes before the serial number (e.g. 'S' for tripleS)
 lineup
 list of members, space-separated
 
-grav
-a list of gravity strings (strings that specify the number of members, then each unit separated by periods, e.g. '8.aaa.kre'). these gravity strings should be separated by two periods.
+ggrav
+a list of grand gravity strings (strings that specify the number of members, then each unit separated by periods, e.g. '8.aaa.kre'). these gravity strings should be separated by two periods.
 
-haus 
+egrav
+a list of grand gravity strings (strings that specify the number of members, then each song separated by periods, e.g. '10.a.b.c.d.e.f.g.h'). these gravity strings should be separated by two periods.
+
+haus (defaults to the original HAUS 1 and 2 in gyeonggi-do) 
 a valid haus.json file, with a seoul HAUS in case of gravity. the default haus.json file can be found here (https://github.com/shuu-wasseo/tripleS-simulator-bot/blob/main/haus.json)"""
 
     help2 = """random_members (defaults to False)
@@ -78,11 +81,15 @@ whether the reveal of the members is random or in the specified order.
 unit (defaults to "")
 units and their descriptions, in the same format as gravity strings
 
-random_grav (defaults to False)
-whether gravity is random or chosen by the user(s) through voting (with emojis). requires voting for the bot on top.gg to enable.
+random_ggrav (defaults to False)
+whether grand gravity is random or chosen by the user(s) through voting (with emojis). requires voting for the bot on top.gg to enable.
+https://top.gg/bot/1041703388057960479/vote
+
+random_egrav (defaults to False)
+whether event gravity is random or chosen by the user(s) through voting (with emojis). requires voting for the bot on top.gg to enable.
 https://top.gg/bot/1041703388057960479/vote"""
 
-    sample = """if you don't know where to start, you can try this first!\n```/run prefix: S lineup: ysy jhr ljw kcy kyy ksm knk gyb ked grav: 8.aaa.kre unit: aaa.acidangelfromasia..kre.krystaleyes random_grav: false```"""
+    sample = """if you don't know where to start, you can try this first!\n```/run prefix: S lineup: ysy jhr ljw kcy kyy ksm knk gyb ked sdh ktn kyj ggrav: 8.aaa.kre egrav: 10.a.b.c.d.e.f.g.h unit: aaa.acid angel from asia..kre.krystal eyes random_ggrav: false random_egrav: false```"""
 
     embed1 = discord.Embed(title = "compulsory parameters", description = "these parameters must be passed.")
     for x in help1.split("\n\n"):
